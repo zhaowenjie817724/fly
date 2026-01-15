@@ -1,0 +1,9 @@
+﻿# python / venv
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# outputs
+logs/
+data/
