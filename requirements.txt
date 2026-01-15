@@ -1,0 +1,6 @@
+pyyaml
+pydantic
+pymavlink
+numpy
+opencv-python
+sounddevice

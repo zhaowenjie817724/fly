@@ -1,0 +1,15 @@
+{
+  "version": "0.1",
+  "time": {
+    "t_mono_ms": 0,
+    "t_wall_ms": 0
+  },
+  "source": "vision|audio|telemetry",
+  "bearing": null,
+  "roi": null,
+  "conf": null,
+  "status": {
+    "state": "ok|degraded|error",
+    "reason": ""
+  }
+}
