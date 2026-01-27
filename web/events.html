@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>事件管理 · 通感之眼</title>
+    <style>
+      :root {
+        --bg: #f2efe9;
+        --ink: #0f172a;
+        --muted: #6b7280;
+        --accent: #0ea5e9;
+        --accent-2: #f97316;
+        --card: #ffffff;
+        --shadow: rgba(15, 23, 42, 0.12);
+        --danger: #ef4444;
+        --success: #22c55e;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "LXGW WenKai", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+        background: radial-gradient(circle at 10% 20%, #ffffff 0%, #f2efe9 40%, #e9e3d9 100%);
+        color: var(--ink);
+      }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
+      header {
+        padding: 24px;
+        border-radius: 20px;
+        background: linear-gradient(120deg, #0f172a 0%, #1f2937 55%, #374151 100%);
+        color: #f8fafc;
+        margin-bottom: 24px;
+      }
+      .title { font-size: 28px; font-weight: 700; }
+      .subtitle { margin-top: 6px; opacity: 0.75; font-size: 14px; }
+      nav { display: flex; gap: 12px; margin-top: 16px; }
+      nav a {
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.15);
+        color: white;
+        text-decoration: none;
+        font-size: 14px;
+      }
+      nav a:hover { background: rgba(255,255,255,0.25); }
+      nav a.active { background: var(--accent); }
+      .filters {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .filters select, .filters input {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: white;
+      }
+      .filters button {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: none;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+      }
+      .grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: 0 6px 16px var(--shadow);
+        overflow: hidden;
+      }
+      .event-list { max-height: 600px; overflow-y: auto; }
+      .event-item {
+        padding: 14px 18px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .event-item:hover { background: #f8fafc; }
+      .event-item.selected { background: #e0f2fe; border-left: 3px solid var(--accent); }
+      .event-type {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 8px;
+      }
+      .event-type.target { background: #dcfce7; color: #166534; }
+      .event-type.mode { background: #dbeafe; color: #1e40af; }
+      .event-type.error { background: #fee2e2; color: #991b1b; }
+      .event-time { color: var(--muted); font-size: 13px; }
+      .event-note { margin-top: 6px; font-size: 14px; }
+      .detail-panel { padding: 20px; }
+      .detail-panel h3 { margin: 0 0 16px; font-size: 18px; }
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px dashed #e5e7eb;
+      }
+      .detail-label { color: var(--muted); }
+      .detail-value { font-weight: 500; }
+      .snapshot-wrap {
+        margin-top: 16px;
+        text-align: center;
+      }
+      .snapshot-wrap img {
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px var(--shadow);
+      }
+      .no-data {
+        padding: 40px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 16px;
+        padding: 16px;
+      }
+      .pagination button {
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        cursor: pointer;
+      }
+      .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .pagination button.active { background: var(--accent); color: white; border-color: var(--accent); }
+      .config-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px var(--shadow);
+      }
+      .config-bar input {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+      .config-bar button {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: none;
+        background: #111827;
+        color: white;
+        cursor: pointer;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+      }
+      .status-dot.ok { background: var(--success); }
+      .status-dot.error { background: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="title">事件管理</div>
+        <div class="subtitle">查看系统事件、目标检测记录、状态变更历史</div>
+        <nav>
+          <a href="dashboard.html">仪表盘</a>
+          <a href="events.html" class="active">事件</a>
+        </nav>
+      </header>
+
+      <div class="config-bar">
+        <span class="status-dot" id="conn-dot"></span>
+        <input id="http-input" placeholder="HTTP地址 (如 http://127.0.0.1:8000)" />
+        <button id="btn-refresh">刷新事件</button>
+      </div>
+
+      <div class="filters">
+        <select id="filter-type">
+          <option value="">全部类型</option>
+          <option value="TARGET_DETECTED">目标检测</option>
+          <option value="MODE_CHANGED">模式变更</option>
+        </select>
+        <input type="number" id="filter-limit" value="20" min="1" max="100" style="width:80px" />
+        <button id="btn-filter">筛选</button>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="event-list" id="event-list">
+            <div class="no-data">加载中...</div>
+          </div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+        <div class="card">
+          <div class="detail-panel" id="detail-panel">
+            <div class="no-data">选择一个事件查看详情</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const DEFAULT_HTTP = "http://127.0.0.1:8000";
+      const httpInput = document.getElementById("http-input");
+      const connDot = document.getElementById("conn-dot");
+      const eventList = document.getElementById("event-list");
+      const detailPanel = document.getElementById("detail-panel");
+      const paginationEl = document.getElementById("pagination");
+      const filterType = document.getElementById("filter-type");
+      const filterLimit = document.getElementById("filter-limit");
+
+      let events = [];
+      let selectedEvent = null;
+      let currentOffset = 0;
+      let pageSize = 20;
+
+      function getHttpBase() {
+        return (httpInput.value || DEFAULT_HTTP).replace(/\/+$/, "");
+      }
+
+      function setConnected(ok) {
+        connDot.className = "status-dot " + (ok ? "ok" : "error");
+      }
+
+      function formatTime(timeObj) {
+        if (!timeObj) return "-";
+        const ts = timeObj.epoch_ms || timeObj.t_epoch_ms;
+        if (!ts) return "-";
+        return new Date(ts).toLocaleString("zh-CN");
+      }
+
+      function getEventTypeClass(type) {
+        if (type === "TARGET_DETECTED") return "target";
+        if (type === "MODE_CHANGED") return "mode";
+        return "error";
+      }
+
+      function renderEventList() {
+        if (!events.length) {
+          eventList.innerHTML = '<div class="no-data">暂无事件</div>';
+          paginationEl.innerHTML = "";
+          return;
+        }
+        eventList.innerHTML = events.map((evt, idx) => `
+          <div class="event-item${selectedEvent && selectedEvent.id === evt.id ? ' selected' : ''}" data-idx="${idx}">
+            <span class="event-type ${getEventTypeClass(evt.type)}">${evt.type || "UNKNOWN"}</span>
+            <span class="event-time">${formatTime(evt.time)}</span>
+            <div class="event-note">${evt.note || ""}</div>
+          </div>
+        `).join("");
+
+        eventList.querySelectorAll(".event-item").forEach(el => {
+          el.addEventListener("click", () => {
+            const idx = parseInt(el.dataset.idx);
+            selectEvent(events[idx]);
+          });
+        });
+
+        // Pagination
+        const totalPages = Math.ceil(50 / pageSize); // 假设最多50条
+        paginationEl.innerHTML = `
+          <button ${currentOffset === 0 ? "disabled" : ""} id="prev-page">上一页</button>
+          <span style="padding:6px 12px;">第 ${Math.floor(currentOffset/pageSize)+1} 页</span>
+          <button ${events.length < pageSize ? "disabled" : ""} id="next-page">下一页</button>
+        `;
+        document.getElementById("prev-page")?.addEventListener("click", () => {
+          currentOffset = Math.max(0, currentOffset - pageSize);
+          loadEvents();
+        });
+        document.getElementById("next-page")?.addEventListener("click", () => {
+          currentOffset += pageSize;
+          loadEvents();
+        });
+      }
+
+      function selectEvent(evt) {
+        selectedEvent = evt;
+        renderEventList();
+        renderDetail(evt);
+      }
+
+      function renderDetail(evt) {
+        if (!evt) {
+          detailPanel.innerHTML = '<div class="no-data">选择一个事件查看详情</div>';
+          return;
+        }
+        const ref = evt.ref || {};
+        let html = `
+          <h3>事件详情</h3>
+          <div class="detail-row"><span class="detail-label">ID</span><span class="detail-value">${evt.id || "-"}</span></div>
+          <div class="detail-row"><span class="detail-label">类型</span><span class="detail-value">${evt.type || "-"}</span></div>
+          <div class="detail-row"><span class="detail-label">时间</span><span class="detail-value">${formatTime(evt.time)}</span></div>
+          <div class="detail-row"><span class="detail-label">严重度</span><span class="detail-value">${evt.severity || "-"}</span></div>
+          <div class="detail-row"><span class="detail-label">备注</span><span class="detail-value">${evt.note || "-"}</span></div>
+          <div class="detail-row"><span class="detail-label">观测ID</span><span class="detail-value">${ref.observation_id || "-"}</span></div>
+        `;
+        if (evt.snapshot) {
+          html += `
+            <div class="snapshot-wrap">
+              <img src="${getHttpBase()}${evt.snapshot}" alt="事件快照" />
+            </div>
+          `;
+        }
+        detailPanel.innerHTML = html;
+      }
+
+      async function loadEvents() {
+        pageSize = parseInt(filterLimit.value) || 20;
+        const typeFilter = filterType.value;
+        const url = `${getHttpBase()}/api/events?limit=${pageSize}&offset=${currentOffset}`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          events = data.events || [];
+          if (typeFilter) {
+            events = events.filter(e => e.type === typeFilter);
+          }
+          setConnected(true);
+          renderEventList();
+        } catch (err) {
+          setConnected(false);
+          eventList.innerHTML = `<div class="no-data">加载失败: ${err.message}</div>`;
+        }
+      }
+
+      document.getElementById("btn-refresh").addEventListener("click", () => {
+        currentOffset = 0;
+        loadEvents();
+      });
+      document.getElementById("btn-filter").addEventListener("click", () => {
+        currentOffset = 0;
+        loadEvents();
+      });
+
+      // Init
+      httpInput.value = localStorage.getItem("httpUrl") || DEFAULT_HTTP;
+      httpInput.addEventListener("change", () => localStorage.setItem("httpUrl", httpInput.value));
+      loadEvents();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+vision:
+  model: yolov8n.pt
+  conf_threshold: 0.4
+  imgsz: 416
+  device: cpu
+  frame_skip: 2
+  max_fps: 8
+  max_detections: 10
+  class_filter:
+    - person
+  camera_fov_deg: 90
+  emit_no_signal: true
+  no_signal_interval_sec: 3
+  event_min_interval_sec: 3
+  metrics_interval_sec: 10
+  save_annotated: false
+  annotate_every_n: 0
+
+  # Sprint 2: ROI误报过滤 (树莓派优化)
+  roi_filter:
+    enabled: true
+    min_area_ratio: 0.008
+    max_area_ratio: 0.5
+    min_aspect_ratio: 0.25
+    max_aspect_ratio: 4.0
+    edge_margin_px: 15

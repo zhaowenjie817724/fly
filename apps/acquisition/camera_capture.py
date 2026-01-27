@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import queue
 import threading
 import time
 from pathlib import Path
@@ -18,6 +19,7 @@ class CameraCapture:
         self.logger = logger
         self.stats = StatsCounter()
         self._stop_event = threading.Event()
+        self._snapshot_requests: queue.Queue[str] = queue.Queue(maxsize=20)
         self._thread = threading.Thread(target=self._run, name="camera-capture", daemon=True)
 
     def start(self) -> None:
@@ -28,6 +30,12 @@ class CameraCapture:
 
     def join(self, timeout: float | None = None) -> None:
         self._thread.join(timeout)
+
+    def request_snapshot(self, tag: str = "event") -> None:
+        try:
+            self._snapshot_requests.put_nowait(tag)
+        except queue.Full:
+            self.logger.warning("Snapshot queue full; dropping snapshot request")
 
     def _run(self) -> None:
         if not self.config.get("enabled", True):
@@ -41,6 +49,8 @@ class CameraCapture:
         codec = str(self.config.get("codec", "mp4v"))
         snapshot_interval = float(self.config.get("snapshot_interval_sec", 0))
         device_index = int(self.config.get("device_index", 0))
+        fault_after = float(self.config.get("fault_after_sec", 0))
+        fault_duration = float(self.config.get("fault_duration_sec", 0))
 
         video_path = self.output_dir / "video.mp4"
         index_path = self.output_dir / "frame_index.jsonl"
@@ -80,9 +90,26 @@ class CameraCapture:
         last_snapshot = 0.0
         interval_sec = 1.0 / fps if fps > 0 else 0.0
         next_tick = time.perf_counter()
+        start_time = time.monotonic()
+        fault_active = False
 
         with index_path.open("w", encoding="utf-8") as index_handle:
             while not self._stop_event.is_set():
+                elapsed = time.monotonic() - start_time
+                if fault_after > 0 and fault_duration > 0 and fault_after <= elapsed < fault_after + fault_duration:
+                    if not fault_active:
+                        self.logger.warning("Camera fault injected (drop frames)")
+                    fault_active = True
+                else:
+                    if fault_active:
+                        self.logger.info("Camera fault cleared")
+                    fault_active = False
+
+                if fault_active:
+                    self.stats.drop()
+                    time.sleep(0.05)
+                    continue
+
                 start = time.perf_counter()
                 if mode == "mock":
                     frame = np.zeros((height, width, 3), dtype=np.uint8)
@@ -106,10 +133,17 @@ class CameraCapture:
                         cv2.imwrite(str(snapshot_path), frame)
                         last_snapshot = now_wall
 
+                while not self._snapshot_requests.empty():
+                    try:
+                        tag = self._snapshot_requests.get_nowait()
+                    except queue.Empty:
+                        break
+                    snapshot_path = snapshot_dir / f"{tag}_{frame_id:06d}.jpg"
+                    cv2.imwrite(str(snapshot_path), frame)
+
                 record = {
                     "frame_id": frame_id,
-                    "t_mono_ms": times["t_mono_ms"],
-                    "t_wall_ms": times["t_wall_ms"],
+                    "time": times,
                     "write_ms": write_ms,
                     "width": int(frame.shape[1]),
                     "height": int(frame.shape[0]),

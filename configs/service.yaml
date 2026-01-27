@@ -1,0 +1,21 @@
+service:
+  host: 0.0.0.0
+  port: 8000
+  status_interval_sec: 1
+  telemetry_timeout_sec: 3
+  command_rate_limit_hz: 5
+  command_whitelist:
+    - SET_YAW
+    - STOP
+    - SET_MODE
+  default_yaw_rate_deg_s: 30
+  gcs_label: "地面站"
+  # WebSocket心跳配置
+  ws_heartbeat_interval_sec: 30
+  ws_heartbeat_timeout_sec: 60
+  mavlink:
+    enabled: false
+    mode: udp  # udp | serial
+    udp: "udp:127.0.0.1:14551"
+    serial_port: "COM5"
+    baud: 115200

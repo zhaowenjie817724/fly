@@ -4,3 +4,8 @@ pymavlink
 numpy
 opencv-python
 sounddevice
+psutil
+ultralytics
+fastapi
+uvicorn
+websockets

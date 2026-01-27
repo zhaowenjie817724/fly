@@ -1,0 +1,137 @@
+.page {
+  padding: 24rpx;
+  background: #f4f3ef;
+  color: #1b1b1b;
+}
+
+.hero {
+  padding: 26rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #0f172a 0%, #2c3e50 55%, #4b5563 100%);
+  color: #f8fafc;
+  margin-bottom: 20rpx;
+  box-shadow: 0 12rpx 24rpx rgba(15, 23, 42, 0.28);
+}
+
+.hero-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.hero-sub {
+  font-size: 24rpx;
+  opacity: 0.8;
+  margin-top: 8rpx;
+}
+
+.pill {
+  display: inline-block;
+  margin-top: 16rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ok {
+  background: rgba(34, 197, 94, 0.2);
+  color: #d1fae5;
+}
+
+.bad {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fee2e2;
+}
+
+.panel {
+  background: #ffffff;
+  border-radius: 18rpx;
+  padding: 20rpx;
+  margin-bottom: 18rpx;
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.08);
+}
+
+.panel-title {
+  font-weight: 700;
+  margin-bottom: 12rpx;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.stat-card {
+  background: #fefefe;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  box-shadow: inset 0 0 0 1rpx rgba(15, 23, 42, 0.06);
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.stat-value {
+  font-size: 30rpx;
+  font-weight: 700;
+  margin-top: 6rpx;
+}
+
+.stat-sub {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.label {
+  color: #6b7280;
+}
+
+.value {
+  color: #111827;
+  font-weight: 600;
+}
+
+.input {
+  border: 1rpx solid #e5e7eb;
+  border-radius: 10rpx;
+  padding: 6rpx 10rpx;
+  width: 64%;
+  background: #f9fafb;
+}
+
+.item {
+  padding: 10rpx 0;
+  border-bottom: 1rpx dashed #e5e7eb;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item-title {
+  font-weight: 700;
+}
+
+.item-desc {
+  color: #6b7280;
+  font-size: 24rpx;
+  margin-top: 4rpx;
+}
+
+.btn-row {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}

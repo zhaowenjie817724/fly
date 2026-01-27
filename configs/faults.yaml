@@ -1,0 +1,11 @@
+camera:
+  fault_after_sec: 10
+  fault_duration_sec: 5
+
+audio:
+  fault_after_sec: 10
+  fault_duration_sec: 5
+
+telemetry:
+  fault_after_sec: 10
+  fault_duration_sec: 5

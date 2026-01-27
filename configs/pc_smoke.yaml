@@ -1,0 +1,39 @@
+run:
+  output_root: runs
+  duration_sec: 8
+  stats_interval_sec: 2
+
+logging:
+  level: INFO
+  jsonl: true
+  dir: logs
+
+camera:
+  enabled: true
+  mode: mock
+  width: 640
+  height: 360
+  fps: 10
+  codec: mp4v
+  snapshot_interval_sec: 0
+  fps_warn_below: 5
+
+audio:
+  enabled: true
+  mode: mock
+  sample_rate: 8000
+  channels: 1
+  block_ms: 50
+  overrun_warn: 2
+
+telemetry:
+  enabled: true
+  mode: mock
+  mock_hz: 2
+
+observation:
+  enabled: true
+  mode: mock
+  mock_hz: 1
+  mock_source: vision
+  mock_status: NO_SIGNAL

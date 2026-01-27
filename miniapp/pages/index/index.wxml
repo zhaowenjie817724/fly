@@ -1,0 +1,89 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">通感之眼</view>
+    <view class="hero-sub">空地协同 · 实时联通 · 低功耗</view>
+    <view class="pill {{connected ? 'ok' : 'bad'}}">
+      {{connected ? '已连接' : '未连接'}}
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">联通设置</view>
+    <view class="row">
+      <text class="label">WS</text>
+      <input class="input" value="{{wsUrl}}" bindinput="onWsInput" />
+    </view>
+    <view class="row">
+      <text class="label">HTTP</text>
+      <input class="input" value="{{httpUrl}}" bindinput="onHttpInput" />
+    </view>
+    <view class="btn-row">
+      <button bindtap="reconnect" size="mini">重新连接</button>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">地面站与链路</view>
+    <view class="row">
+      <text class="label">地面站</text>
+      <text class="value">{{status.gcsLabel}}</text>
+    </view>
+    <view class="row">
+      <text class="label">链路状态</text>
+      <text class="value">{{status.linkText}}</text>
+    </view>
+    <view class="row">
+      <text class="label">最近更新</text>
+      <text class="value">{{status.lastUpdate}}</text>
+    </view>
+  </view>
+
+  <view class="stats-grid">
+    <view class="stat-card">
+      <text class="stat-label">电池电压</text>
+      <text class="stat-value">{{telemetry.battery_v || '--'}} V</text>
+      <text class="stat-sub">剩余 {{telemetry.battery_pct || '--'}}%</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-label">姿态</text>
+      <text class="stat-value">{{telemetry.attitude || '--'}}</text>
+      <text class="stat-sub">Roll / Pitch / Yaw</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-label">GPS</text>
+      <text class="stat-value">{{telemetry.gps || '--'}}</text>
+      <text class="stat-sub">经纬度</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-label">高度</text>
+      <text class="stat-value">{{telemetry.alt || '--'}} m</text>
+      <text class="stat-sub">相对高度</text>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">控制台</view>
+    <view class="btn-row">
+      <button bindtap="yawLeft" size="mini">左转 -10</button>
+      <button bindtap="yawRight" size="mini">右转 +10</button>
+      <button bindtap="setLoiter" size="mini">悬停</button>
+      <button bindtap="stop" size="mini" type="warn">急停</button>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">事件流</view>
+    <view wx:for="{{events}}" wx:key="idx" class="item">
+      <text class="item-title">{{item.type}}</text>
+      <text class="item-desc">{{item.note}}</text>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">观测流</view>
+    <view wx:for="{{observations}}" wx:key="idx" class="item">
+      <text class="item-title">{{item.source}}</text>
+      <text class="item-desc">{{item.desc}}</text>
+    </view>
+  </view>
+</view>

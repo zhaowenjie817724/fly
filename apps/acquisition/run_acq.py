@@ -19,6 +19,7 @@ from apps.acquisition.audio_capture import AudioCapture  # noqa: E402
 from apps.acquisition.camera_capture import CameraCapture  # noqa: E402
 from apps.acquisition.config_utils import load_config  # noqa: E402
 from apps.acquisition.logging_utils import setup_logging  # noqa: E402
+from apps.acquisition.observation_capture import ObservationCapture  # noqa: E402
 from apps.acquisition.telemetry_capture import TelemetryCapture  # noqa: E402
 from src.common.run_manager import RunManager  # noqa: E402
 from src.common.timebase import TimeBase  # noqa: E402
@@ -71,14 +72,17 @@ def main() -> int:
     camera_cfg = config.get("camera", {})
     audio_cfg = config.get("audio", {})
     telemetry_cfg = config.get("telemetry", {})
+    observation_cfg = config.get("observation", {})
 
     camera = CameraCapture(camera_cfg, run_manager.paths.video, timebase, logger)
     audio = AudioCapture(audio_cfg, run_manager.paths.audio, timebase, logger)
     telemetry = TelemetryCapture(telemetry_cfg, run_manager.paths.telemetry, timebase, logger)
+    observation = ObservationCapture(observation_cfg, run_manager.paths.observations, timebase, logger)
 
     camera.start()
     audio.start()
     telemetry.start()
+    observation.start()
 
     start = time.monotonic()
     next_stats = start + stats_interval
@@ -97,6 +101,7 @@ def main() -> int:
                         overrun_warn=int(audio_cfg.get("overrun_warn", 0)) or None,
                     )
                     log_stats(logger, "telemetry", telemetry.stats)
+                    log_stats(logger, "observation", observation.stats)
                     next_stats = time.monotonic() + stats_interval
         else:
             while time.monotonic() - start < duration_sec:
@@ -110,6 +115,7 @@ def main() -> int:
                         overrun_warn=int(audio_cfg.get("overrun_warn", 0)) or None,
                     )
                     log_stats(logger, "telemetry", telemetry.stats)
+                    log_stats(logger, "observation", observation.stats)
                     next_stats += stats_interval
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
@@ -117,9 +123,11 @@ def main() -> int:
         camera.stop()
         audio.stop()
         telemetry.stop()
+        observation.stop()
         camera.join(timeout=5)
         audio.join(timeout=5)
         telemetry.join(timeout=5)
+        observation.join(timeout=5)
         logger.info("Run complete: %s", run_manager.paths.root)
 
     return 0

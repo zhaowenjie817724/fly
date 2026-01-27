@@ -23,6 +23,21 @@ def load_jsonl(path: Path) -> list[dict]:
     return records
 
 
+def get_mono_ms(record: dict) -> int:
+    time_obj = record.get("time")
+    if isinstance(time_obj, dict):
+        mono = time_obj.get("mono_ms")
+        if mono is None:
+            mono = time_obj.get("t_mono_ms")
+        if mono is not None:
+            return int(mono)
+    if "mono_ms" in record:
+        return int(record["mono_ms"])
+    if "t_mono_ms" in record:
+        return int(record["t_mono_ms"])
+    return 0
+
+
 def find_latest_run(runs_root: Path) -> Path | None:
     if not runs_root.exists():
         return None
@@ -38,6 +53,8 @@ def build_events(run_dir: Path) -> list[dict]:
     video_index = run_dir / "video" / "frame_index.jsonl"
     audio_index = run_dir / "audio" / "audio_index.jsonl"
     telemetry_path = run_dir / "telemetry" / "telemetry.jsonl"
+    observations_dir = run_dir / "observations"
+    event_path = run_dir / "events.jsonl"
 
     for record in load_jsonl(video_index):
         events.append({"stream": "video", **record})
@@ -45,8 +62,14 @@ def build_events(run_dir: Path) -> list[dict]:
         events.append({"stream": "audio", **record})
     for record in load_jsonl(telemetry_path):
         events.append({"stream": "telemetry", **record})
+    if observations_dir.exists():
+        for obs_file in observations_dir.glob("*.jsonl"):
+            for record in load_jsonl(obs_file):
+                events.append({"stream": f"observation:{obs_file.stem}", **record})
+    for record in load_jsonl(event_path):
+        events.append({"stream": "event", **record})
 
-    events.sort(key=lambda item: item.get("t_mono_ms", 0))
+    events.sort(key=get_mono_ms)
     return events
 
 
@@ -60,11 +83,11 @@ def replay_events(events: list[dict], speed: float, output_path: Path | None) ->
         output_path.parent.mkdir(parents=True, exist_ok=True)
         handle = output_path.open("w", encoding="utf-8")
 
-    start_mono = events[0].get("t_mono_ms", 0)
+    start_mono = get_mono_ms(events[0])
     start_time = time.perf_counter()
 
     for event in events:
-        t_mono = event.get("t_mono_ms", start_mono)
+        t_mono = get_mono_ms(event) or start_mono
         if speed > 0:
             target_elapsed = (t_mono - start_mono) / 1000.0 / speed
             while True:

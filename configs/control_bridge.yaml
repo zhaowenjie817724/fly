@@ -1,0 +1,12 @@
+control_bridge:
+  mode: mavlink_udp  # mavlink_udp | mavlink_serial
+  udp: "udp:127.0.0.1:14552"
+  serial_port: "COM5"
+  baud: 115200
+  max_rate_hz: 5
+  allow_types:
+    - SET_YAW
+    - SET_MODE
+    - STOP
+  default_yaw_rate_deg_s: 30
+  start_from_beginning: false

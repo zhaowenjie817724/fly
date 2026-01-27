@@ -45,20 +45,22 @@ class AudioCapture:
         channels = int(self.config.get("channels", 1))
         block_ms = float(self.config.get("block_ms", 20))
         block_samples = max(1, int(sample_rate * block_ms / 1000.0))
+        fault_after = float(self.config.get("fault_after_sec", 0))
+        fault_duration = float(self.config.get("fault_duration_sec", 0))
 
         audio_path = self.output_dir / "audio.wav"
         index_path = self.output_dir / "audio_index.jsonl"
 
         if mode == "mic":
-            self._run_mic(audio_path, index_path, sample_rate, channels, block_samples)
+            self._run_mic(audio_path, index_path, sample_rate, channels, block_samples, fault_after, fault_duration)
         elif mode == "wav_file":
             input_wav = self.config.get("input_wav", "")
             if not input_wav:
                 self.logger.error("audio.input_wav is required for wav_file mode")
                 return
-            self._run_wav_file(Path(input_wav), audio_path, index_path, sample_rate, channels, block_samples)
+            self._run_wav_file(Path(input_wav), audio_path, index_path, sample_rate, channels, block_samples, fault_after, fault_duration)
         elif mode == "mock":
-            self._run_mock(audio_path, index_path, sample_rate, channels, block_samples)
+            self._run_mock(audio_path, index_path, sample_rate, channels, block_samples, fault_after, fault_duration)
         else:
             self.logger.error("Unsupported audio mode: %s", mode)
 
@@ -74,6 +76,8 @@ class AudioCapture:
         sample_rate: int,
         channels: int,
         block_samples: int,
+        fault_after: float,
+        fault_duration: float,
     ) -> None:
         freq = 440.0
         phase = 0.0
@@ -81,10 +85,27 @@ class AudioCapture:
         block_duration = block_samples / sample_rate
         next_tick = time.perf_counter()
 
+        start_time = time.monotonic()
+        fault_active = False
         with wave.open(str(audio_path), "wb") as wav_handle, index_path.open("w", encoding="utf-8") as idx:
             self._write_wave_header(wav_handle, sample_rate, channels)
             block_id = 0
             while not self._stop_event.is_set():
+                elapsed = time.monotonic() - start_time
+                if fault_after > 0 and fault_duration > 0 and fault_after <= elapsed < fault_after + fault_duration:
+                    if not fault_active:
+                        self.logger.warning("Audio fault injected (drop blocks)")
+                    fault_active = True
+                else:
+                    if fault_active:
+                        self.logger.info("Audio fault cleared")
+                    fault_active = False
+
+                if fault_active:
+                    self.stats.add_overrun()
+                    time.sleep(0.05)
+                    continue
+
                 times = self.timebase.now()
                 t = phase + step * np.arange(block_samples)
                 signal = (0.2 * np.sin(t)).astype(np.float32)
@@ -95,8 +116,7 @@ class AudioCapture:
 
                 record = {
                     "block_id": block_id,
-                    "t_mono_ms": times["t_mono_ms"],
-                    "t_wall_ms": times["t_wall_ms"],
+                    "time": times,
                     "samples": block_samples,
                     "channels": channels,
                     "overrun": False,
@@ -116,6 +136,8 @@ class AudioCapture:
         sample_rate: int,
         channels: int,
         block_samples: int,
+        fault_after: float,
+        fault_duration: float,
     ) -> None:
         if not input_path.exists():
             self.logger.error("Input wav not found: %s", input_path)
@@ -125,10 +147,27 @@ class AudioCapture:
         next_tick = time.perf_counter()
         block_id = 0
 
+        start_time = time.monotonic()
+        fault_active = False
         with wave.open(str(input_path), "rb") as src, wave.open(str(audio_path), "wb") as dst:
             self._write_wave_header(dst, sample_rate, channels)
             with index_path.open("w", encoding="utf-8") as idx:
                 while not self._stop_event.is_set():
+                    elapsed = time.monotonic() - start_time
+                    if fault_after > 0 and fault_duration > 0 and fault_after <= elapsed < fault_after + fault_duration:
+                        if not fault_active:
+                            self.logger.warning("Audio fault injected (drop blocks)")
+                        fault_active = True
+                    else:
+                        if fault_active:
+                            self.logger.info("Audio fault cleared")
+                        fault_active = False
+
+                    if fault_active:
+                        self.stats.add_overrun()
+                        time.sleep(0.05)
+                        continue
+
                     data = src.readframes(block_samples)
                     if not data:
                         src.rewind()
@@ -138,8 +177,7 @@ class AudioCapture:
                     dst.writeframes(data)
                     record = {
                         "block_id": block_id,
-                        "t_mono_ms": times["t_mono_ms"],
-                        "t_wall_ms": times["t_wall_ms"],
+                        "time": times,
                         "samples": block_samples,
                         "channels": channels,
                         "overrun": False,
@@ -158,6 +196,8 @@ class AudioCapture:
         sample_rate: int,
         channels: int,
         block_samples: int,
+        fault_after: float,
+        fault_duration: float,
     ) -> None:
         try:
             import sounddevice as sd
@@ -167,7 +207,23 @@ class AudioCapture:
 
         q: queue.Queue = queue.Queue(maxsize=100)
 
+        start_time = time.monotonic()
+        fault_active = False
+
         def callback(indata, frames, _time, status):
+            nonlocal fault_active
+            elapsed = time.monotonic() - start_time
+            if fault_after > 0 and fault_duration > 0 and fault_after <= elapsed < fault_after + fault_duration:
+                if not fault_active:
+                    self.logger.warning("Audio fault injected (drop blocks)")
+                fault_active = True
+            else:
+                if fault_active:
+                    self.logger.info("Audio fault cleared")
+                fault_active = False
+            if fault_active:
+                self.stats.add_overrun()
+                return
             overrun = bool(status)
             times = self.timebase.now()
             try:
@@ -192,8 +248,7 @@ class AudioCapture:
                     wav_handle.writeframes(audio_i16.tobytes())
                     record = {
                         "block_id": block_id,
-                        "t_mono_ms": times["t_mono_ms"],
-                        "t_wall_ms": times["t_wall_ms"],
+                        "time": times,
                         "samples": int(data.shape[0]),
                         "channels": int(data.shape[1]) if data.ndim > 1 else 1,
                         "overrun": bool(overrun),

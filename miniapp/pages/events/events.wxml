@@ -1,0 +1,40 @@
+<view class="page">
+  <view class="header">
+    <text class="title">事件记录</text>
+    <text class="subtitle">共 {{total}} 条</text>
+  </view>
+
+  <view class="filter-bar">
+    <view class="filter-item {{filter === 'all' ? 'active' : ''}}" bindtap="setFilter" data-type="all">全部</view>
+    <view class="filter-item {{filter === 'TARGET_DETECTED' ? 'active' : ''}}" bindtap="setFilter" data-type="TARGET_DETECTED">目标检测</view>
+    <view class="filter-item {{filter === 'MODE_CHANGED' ? 'active' : ''}}" bindtap="setFilter" data-type="MODE_CHANGED">模式变更</view>
+  </view>
+
+  <scroll-view scroll-y class="event-list" bindscrolltolower="loadMore">
+    <view wx:for="{{events}}" wx:key="id" class="event-card" bindtap="goDetail" data-id="{{item.id}}">
+      <view class="event-header">
+        <view class="event-type {{item.type === 'TARGET_DETECTED' ? 'type-target' : 'type-mode'}}">
+          {{item.type === 'TARGET_DETECTED' ? '目标' : '模式'}}
+        </view>
+        <text class="event-time">{{item.timeStr}}</text>
+      </view>
+      <view class="event-body">
+        <text class="event-note">{{item.note}}</text>
+      </view>
+      <view class="event-footer" wx:if="{{item.snapshot}}">
+        <image class="thumbnail" src="{{httpBase}}{{item.snapshot}}" mode="aspectFill"></image>
+      </view>
+    </view>
+
+    <view class="loading" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+    <view class="no-more" wx:if="{{!loading && noMore}}">
+      <text>没有更多了</text>
+    </view>
+  </scroll-view>
+
+  <view class="refresh-btn" bindtap="refresh">
+    <text>刷新</text>
+  </view>
+</view>

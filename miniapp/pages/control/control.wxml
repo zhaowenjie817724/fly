@@ -1,0 +1,102 @@
+<view class="page">
+  <!-- 连接状态 -->
+  <view class="status-bar">
+    <view class="status-dot {{connected ? 'dot-ok' : 'dot-error'}}"></view>
+    <text class="status-text">{{connected ? '已连接' : '未连接'}}</text>
+    <text class="status-mode">{{fsmState}}</text>
+  </view>
+
+  <!-- 姿态指示 -->
+  <view class="attitude-panel">
+    <view class="compass">
+      <view class="compass-ring">
+        <view class="compass-arrow" style="transform: rotate({{yaw}}deg)"></view>
+      </view>
+      <text class="compass-value">{{yaw}}°</text>
+    </view>
+    <view class="attitude-values">
+      <view class="att-item">
+        <text class="att-label">Roll</text>
+        <text class="att-value">{{roll}}°</text>
+      </view>
+      <view class="att-item">
+        <text class="att-label">Pitch</text>
+        <text class="att-value">{{pitch}}°</text>
+      </view>
+      <view class="att-item">
+        <text class="att-label">Yaw</text>
+        <text class="att-value">{{yaw}}°</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 偏航控制 -->
+  <view class="control-section">
+    <text class="section-title">偏航控制</text>
+    <view class="yaw-controls">
+      <view class="yaw-btn" bindtap="yawLeft" data-deg="30">
+        <text class="yaw-icon">⟵</text>
+        <text class="yaw-text">-30°</text>
+      </view>
+      <view class="yaw-btn" bindtap="yawLeft" data-deg="10">
+        <text class="yaw-icon">←</text>
+        <text class="yaw-text">-10°</text>
+      </view>
+      <view class="yaw-center">
+        <text>YAW</text>
+      </view>
+      <view class="yaw-btn" bindtap="yawRight" data-deg="10">
+        <text class="yaw-icon">→</text>
+        <text class="yaw-text">+10°</text>
+      </view>
+      <view class="yaw-btn" bindtap="yawRight" data-deg="30">
+        <text class="yaw-icon">⟶</text>
+        <text class="yaw-text">+30°</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 模式切换 -->
+  <view class="control-section">
+    <text class="section-title">飞行模式</text>
+    <view class="mode-grid">
+      <view class="mode-btn {{currentMode === 'LOITER' ? 'mode-active' : ''}}" bindtap="setMode" data-mode="LOITER">
+        <text class="mode-icon">⊙</text>
+        <text class="mode-name">悬停</text>
+      </view>
+      <view class="mode-btn {{currentMode === 'GUIDED' ? 'mode-active' : ''}}" bindtap="setMode" data-mode="GUIDED">
+        <text class="mode-icon">◎</text>
+        <text class="mode-name">引导</text>
+      </view>
+      <view class="mode-btn {{currentMode === 'RTL' ? 'mode-active' : ''}}" bindtap="setMode" data-mode="RTL">
+        <text class="mode-icon">⌂</text>
+        <text class="mode-name">返航</text>
+      </view>
+      <view class="mode-btn {{currentMode === 'LAND' ? 'mode-active' : ''}}" bindtap="setMode" data-mode="LAND">
+        <text class="mode-icon">▽</text>
+        <text class="mode-name">降落</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 急停按钮 -->
+  <view class="estop-section">
+    <view class="estop-btn" bindtap="emergencyStop" bindlongpress="onEstopLongPress">
+      <text class="estop-icon">⚠</text>
+      <text class="estop-text">长按急停</text>
+    </view>
+    <text class="estop-hint">点击提示，长按2秒确认执行</text>
+  </view>
+
+  <!-- 命令日志 -->
+  <view class="log-section">
+    <text class="section-title">命令日志</text>
+    <scroll-view scroll-y class="log-list">
+      <view wx:for="{{cmdLogs}}" wx:key="idx" class="log-item {{item.success ? 'log-ok' : 'log-fail'}}">
+        <text class="log-time">{{item.time}}</text>
+        <text class="log-cmd">{{item.cmd}}</text>
+        <text class="log-status">{{item.success ? '✓' : '✗'}}</text>
+      </view>
+    </scroll-view>
+  </view>
+</view>

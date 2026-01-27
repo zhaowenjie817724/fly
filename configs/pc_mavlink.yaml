@@ -1,0 +1,46 @@
+run:
+  output_root: runs
+  duration_sec: 1800
+  stats_interval_sec: 5
+
+logging:
+  level: INFO
+  jsonl: true
+  dir: logs
+
+camera:
+  enabled: true
+  mode: device  # device | mock
+  device_index: 0
+  width: 1280
+  height: 720
+  fps: 30
+  codec: mp4v
+  snapshot_interval_sec: 2
+  fps_warn_below: 20
+
+audio:
+  enabled: false
+  mode: disabled  # disabled | mic | wav_file | mock
+  device_index: null
+  sample_rate: 16000
+  channels: 1
+  block_ms: 20
+  input_wav: ""
+  overrun_warn: 5
+
+telemetry:
+  enabled: true
+  mode: mavlink_udp  # mock | mavlink_udp | mavlink_serial
+  emit_hz: 2
+  mavlink:
+    udp: "udp:127.0.0.1:14551"
+    serial_port: "COM5"
+    baud: 115200
+
+observation:
+  enabled: true
+  mode: mock  # mock | disabled
+  mock_hz: 1
+  mock_source: vision
+  mock_status: NO_SIGNAL

@@ -19,9 +19,12 @@ python -m venv .venv
 ## Expected Outputs
 
 - runs/<run_id>/run_meta.json
+- runs/<run_id>/events.jsonl
+- runs/<run_id>/metrics.jsonl
 - runs/<run_id>/video/video.mp4
 - runs/<run_id>/video/frame_index.jsonl
 - runs/<run_id>/telemetry/telemetry.jsonl
+- runs/<run_id>/observations/observations.jsonl
 - runs/<run_id>/audio/audio.wav (if audio enabled)
 - runs/<run_id>/audio/audio_index.jsonl (if audio enabled)
 
@@ -38,3 +41,4 @@ Every 5 seconds the console log should show:
 - No camera: set camera.mode to mock
 - No microphone: set audio.mode to disabled or wav_file
 - No MAVLink: set telemetry.mode to mock
+- Mission Planner + local app conflict: use GCS on UDP 14550 and local app on UDP 14551

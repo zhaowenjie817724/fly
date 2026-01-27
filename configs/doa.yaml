@@ -1,0 +1,16 @@
+doa:
+  mic_distance_m: 0.05
+  speed_sound_m_s: 343.0
+  block_ms: 100
+  smoothing: 0.4
+  conf_threshold: 0.15
+  window: hann
+  pair_mode: reference
+  pre_emphasis: 0.97
+
+  # 合成测试 (PC端离线验证)
+  synth_enabled: true
+  synth_angle_deg: 30
+  synth_duration_sec: 10
+  synth_noise_level: 0.05
+  synth_sample_rate: 16000

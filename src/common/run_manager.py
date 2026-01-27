@@ -22,6 +22,9 @@ class RunPaths:
     video: Path
     audio: Path
     telemetry: Path
+    observations: Path
+    events_file: Path
+    metrics_file: Path
 
 
 class RunManager:
@@ -49,11 +52,26 @@ class RunManager:
         video_dir = run_dir / "video"
         audio_dir = run_dir / "audio"
         telemetry_dir = run_dir / "telemetry"
+        observations_dir = run_dir / "observations"
         video_dir.mkdir(parents=True, exist_ok=True)
         audio_dir.mkdir(parents=True, exist_ok=True)
         telemetry_dir.mkdir(parents=True, exist_ok=True)
+        observations_dir.mkdir(parents=True, exist_ok=True)
 
-        return RunPaths(root=run_dir, video=video_dir, audio=audio_dir, telemetry=telemetry_dir)
+        events_file = run_dir / "events.jsonl"
+        metrics_file = run_dir / "metrics.jsonl"
+        events_file.write_text("", encoding="utf-8")
+        metrics_file.write_text("", encoding="utf-8")
+
+        return RunPaths(
+            root=run_dir,
+            video=video_dir,
+            audio=audio_dir,
+            telemetry=telemetry_dir,
+            observations=observations_dir,
+            events_file=events_file,
+            metrics_file=metrics_file,
+        )
 
     def write_meta(self, extra: dict | None = None) -> None:
         meta = {

@@ -1,0 +1,38 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/events/events",
+    "pages/event-detail/event-detail",
+    "pages/control/control",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "navigationBarTitleText": "通感之眼",
+    "navigationBarBackgroundColor": "#1a1a2e",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0f0f1a"
+  },
+  "tabBar": {
+    "color": "#8a8a8a",
+    "selectedColor": "#4fc3f7",
+    "backgroundColor": "#1a1a2e",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "仪表盘"
+      },
+      {
+        "pagePath": "pages/events/events",
+        "text": "事件"
+      },
+      {
+        "pagePath": "pages/control/control",
+        "text": "控制"
+      },
+      {
+        "pagePath": "pages/settings/settings",
+        "text": "设置"
+      }
+    ]
+  }
+}

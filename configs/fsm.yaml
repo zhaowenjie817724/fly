@@ -1,0 +1,38 @@
+fusion:
+  max_gap_ms: 200
+
+fsm:
+  lock_conf: 0.6
+  audio_trigger_conf: 0.3
+  lost_timeout_sec: 3
+  yaw_rate_deg_s: 30
+  max_cmd_rate_hz: 5
+  command_ttl_sec: 1
+  event_cooldown_sec: 1
+
+  # Sprint 4: 完整状态定义
+  # IDLE -> SEARCH -> SCAN -> LOCKED -> TRACK -> LOST -> (RETURN | SEARCH)
+  states:
+    - IDLE           # 初始空闲
+    - SEARCH         # 空中搜索
+    - SCAN           # 悬停扫描
+    - LOCKED         # 目标锁定
+    - TRACK          # 持续追踪
+    - LOST           # 目标丢失
+    - DEGRADED       # 降级模式
+    - RETURN         # 返航
+
+  # Sprint 4: 降级策略
+  degradation:
+    vision_fail_action: audio_only    # 视觉失效时仅用声源
+    audio_fail_action: vision_only    # 声源失效时仅用视觉
+    both_fail_action: return          # 全失效时返航
+    max_degraded_sec: 30              # 降级模式最大持续时间
+    auto_recover: true                # 传感器恢复后自动退出降级
+
+control:
+  mode: mavlink_udp  # mavlink_udp | mavlink_serial
+  mavlink:
+    udp: "udp:127.0.0.1:14551"
+    serial_port: "COM5"
+    baud: 115200

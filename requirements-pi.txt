@@ -1,0 +1,10 @@
+pyyaml
+pydantic
+pymavlink
+numpy
+opencv-python-headless
+sounddevice
+psutil
+fastapi
+uvicorn
+websockets

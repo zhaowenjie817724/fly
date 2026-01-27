@@ -1,0 +1,44 @@
+<view class="page">
+  <view class="card" wx:if="{{event}}">
+    <view class="card-header">
+      <view class="type-badge {{event.type === 'TARGET_DETECTED' ? 'badge-target' : 'badge-mode'}}">
+        {{event.type}}
+      </view>
+      <text class="severity">{{event.severity || 'INFO'}}</text>
+    </view>
+
+    <view class="snapshot-box" wx:if="{{event.snapshot}}">
+      <image class="snapshot" src="{{httpBase}}{{event.snapshot}}" mode="aspectFit" bindtap="previewImage"></image>
+    </view>
+
+    <view class="info-list">
+      <view class="info-item">
+        <text class="info-label">时间</text>
+        <text class="info-value">{{timeStr}}</text>
+      </view>
+      <view class="info-item">
+        <text class="info-label">说明</text>
+        <text class="info-value">{{event.note || '-'}}</text>
+      </view>
+      <view class="info-item" wx:if="{{event.ref}}">
+        <text class="info-label">关联观测</text>
+        <text class="info-value">{{event.ref.observation_id || '-'}}</text>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{event.ref}}">
+      <text class="section-title">观测详情</text>
+      <view class="code-block">
+        <text>{{refJson}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:else>
+    <text>加载中...</text>
+  </view>
+
+  <view class="actions">
+    <button class="btn" bindtap="goBack">返回列表</button>
+  </view>
+</view>
