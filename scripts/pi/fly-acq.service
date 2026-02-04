@@ -1,0 +1,38 @@
+[Unit]
+Description=Fly Acquisition Service - 数据采集
+Documentation=https://github.com/zhaowenjie817724/fly
+After=network.target mavlink-router.service
+Wants=mavlink-router.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/fly
+Environment="PATH=/home/pi/fly/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/pi/fly/.venv/bin/python apps/acquisition/run_acq.py --config configs/pi_bookworm.yaml
+Restart=always
+RestartSec=5
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/pi/fly/runs /home/pi/fly/logs
+PrivateTmp=true
+
+# 摄像头和串口权限
+SupplementaryGroups=video dialout
+
+# 资源限制（2GB 内存环境）
+MemoryMax=512M
+MemoryHigh=400M
+CPUQuota=60%
+
+# OOM 优先级（采集比推理更重要）
+OOMScoreAdjust=-100
+
+# 看门狗
+WatchdogSec=60
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,48 @@
+# PC环境配置 - 配合 LandState GCS 使用
+# LandState GCS 连接 14550，fly 连接 14551
+
+run:
+  output_root: runs
+  duration_sec: 1800
+  stats_interval_sec: 5
+
+logging:
+  level: INFO
+  jsonl: true
+  dir: logs
+
+camera:
+  enabled: true
+  mode: device
+  device_index: 0
+  width: 1280
+  height: 720
+  fps: 30
+  codec: mp4v
+  snapshot_interval_sec: 2
+  fps_warn_below: 20
+
+audio:
+  enabled: false
+  mode: disabled
+
+telemetry:
+  enabled: true
+  mode: mavlink_udp
+  emit_hz: 5
+  link_degraded_after_sec: 2
+  link_lost_after_sec: 5
+  mavlink:
+    udp: "udp:127.0.0.1:14551"
+    serial_port: "COM5"
+    baud: 115200
+
+observation:
+  enabled: true
+  mode: mock
+  mock_hz: 1
+  mock_source: vision
+  mock_status: NO_SIGNAL
+  mock_bearing_deg_start: 0
+  mock_bearing_deg_step: 15
+  mock_confidence: 0.6

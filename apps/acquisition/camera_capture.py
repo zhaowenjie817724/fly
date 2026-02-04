@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import platform
 import queue
 import threading
 import time
@@ -9,6 +10,19 @@ from pathlib import Path
 import numpy as np
 
 from .stats import StatsCounter
+
+
+def _get_cv2_backend():
+    """获取适合当前平台的 OpenCV 后端"""
+    system = platform.system()
+    if system == "Windows":
+        import cv2
+        return cv2.CAP_DSHOW
+    elif system == "Linux":
+        import cv2
+        return cv2.CAP_V4L2
+    else:
+        return None  # 默认后端
 
 
 class CameraCapture:
@@ -57,25 +71,49 @@ class CameraCapture:
         snapshot_dir = self.output_dir / "snapshots"
         snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            import cv2
-        except Exception as exc:
-            self.logger.error("OpenCV not available: %s", exc)
-            return
+        # 选择采集后端
+        if mode == "picamera2":
+            # Raspberry Pi CSI 摄像头（libcamera 栈）
+            cap = self._init_picamera2(width, height, fps)
+            if cap is None:
+                return
+            use_picamera2 = True
+        elif mode in ("device", "v4l2"):
+            # OpenCV 采集（USB 摄像头或 V4L2）
+            try:
+                import cv2
+            except Exception as exc:
+                self.logger.error("OpenCV not available: %s", exc)
+                return
 
-        cap = None
-        if mode == "device":
-            cap = cv2.VideoCapture(device_index, cv2.CAP_DSHOW)
+            backend = _get_cv2_backend()
+            if backend is not None:
+                cap = cv2.VideoCapture(device_index, backend)
+            else:
+                cap = cv2.VideoCapture(device_index)
+
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
             cap.set(cv2.CAP_PROP_FPS, fps)
+
+            # 可选：设置缓冲区大小（减少延迟）
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
             if not cap.isOpened():
                 self.logger.error("Failed to open camera device %s", device_index)
                 return
+            use_picamera2 = False
         elif mode == "mock":
             cap = None
+            use_picamera2 = False
         else:
-            self.logger.error("Unsupported camera mode: %s", mode)
+            self.logger.error("Unsupported camera mode: %s (supported: device, v4l2, picamera2, mock)", mode)
+            return
+
+        try:
+            import cv2
+        except Exception as exc:
+            self.logger.error("OpenCV not available for video writing: %s", exc)
             return
 
         fourcc = cv2.VideoWriter_fourcc(*codec)
@@ -114,6 +152,12 @@ class CameraCapture:
                 if mode == "mock":
                     frame = np.zeros((height, width, 3), dtype=np.uint8)
                     ret = True
+                elif use_picamera2:
+                    frame = cap.capture_array()
+                    ret = frame is not None
+                    if ret:
+                        # picamera2 返回 RGB，OpenCV 需要 BGR
+                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 else:
                     ret, frame = cap.read()
 
@@ -157,5 +201,32 @@ class CameraCapture:
                     time.sleep(max(0.0, next_tick - time.perf_counter()))
 
         writer.release()
-        if cap is not None:
+        if use_picamera2 and cap is not None:
+            cap.stop()
+        elif cap is not None:
             cap.release()
+
+    def _init_picamera2(self, width: int, height: int, fps: int):
+        """初始化 Raspberry Pi CSI 摄像头（picamera2）"""
+        try:
+            from picamera2 import Picamera2
+        except ImportError:
+            self.logger.error(
+                "picamera2 not available. Install with: pip install picamera2\n"
+                "Or use mode=device for USB cameras."
+            )
+            return None
+
+        try:
+            picam2 = Picamera2()
+            config = picam2.create_video_configuration(
+                main={"size": (width, height), "format": "RGB888"},
+                controls={"FrameRate": fps},
+            )
+            picam2.configure(config)
+            picam2.start()
+            self.logger.info("picamera2 initialized: %dx%d @ %d fps", width, height, fps)
+            return picam2
+        except Exception as exc:
+            self.logger.error("Failed to initialize picamera2: %s", exc)
+            return None

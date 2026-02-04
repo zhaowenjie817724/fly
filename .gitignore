@@ -2,7 +2,9 @@
 __pycache__/
 *.pyc
 .venv/
+venv/
 .env
+*.egg-info/
 
 # outputs
 logs/*
@@ -13,3 +15,20 @@ runs/*
 
 # model weights
 *.pt
+*.onnx
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# test outputs
+*.tmp
+test_*.mp4
+test_*.jpg

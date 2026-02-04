@@ -1,0 +1,135 @@
+# Raspberry Pi OS Bookworm 优化配置
+# 适用于：Raspberry Pi 4/5，2GB 内存，Debian 12 Bookworm
+# 核心原则：内存峰值控制、推理降频、事件驱动落盘
+
+run:
+  output_root: runs
+  duration_sec: 0  # 0 = 持续运行直到中断
+  stats_interval_sec: 10
+
+logging:
+  level: INFO
+  jsonl: true
+  dir: logs
+
+# === 摄像头配置（内存优化） ===
+camera:
+  enabled: true
+  mode: device  # device | mock | picamera2
+  device_index: 0
+  # 640x360 @ 10fps 显著降低内存和 CPU
+  width: 640
+  height: 360
+  fps: 10
+  codec: mp4v
+  # 快照间隔延长到 5 秒，减少 SD 卡写入
+  snapshot_interval_sec: 5
+  fps_warn_below: 5
+  # 视频编码质量（越低文件越小）
+  # jpeg_quality: 80
+
+# === 音频配置（默认禁用） ===
+audio:
+  enabled: false
+  mode: disabled  # disabled | mic | wav_file | mock
+  # 如启用麦阵，使用以下配置：
+  # mode: mic
+  # device_index: 1
+  sample_rate: 16000
+  channels: 1
+  block_ms: 20
+  overrun_warn: 3
+  # 音频采集优先级提升（防止 YOLO 抢占导致丢块）
+  # thread_priority: high
+
+# === 遥测配置（MAVLink） ===
+telemetry:
+  enabled: true
+  mode: mavlink_udp  # mock | mavlink_udp | mavlink_serial
+  emit_hz: 2  # 降低发送频率节省 CPU
+  link_degraded_after_sec: 2
+  link_lost_after_sec: 5
+  mavlink:
+    # mavlink-router 输出到 14551
+    udp: "udp:127.0.0.1:14551"
+    # 如直连飞控串口：
+    # serial_port: "/dev/ttyAMA0"
+    # baud: 115200
+
+# === 观测配置（推理相关） ===
+observation:
+  enabled: true
+  mode: mock  # mock | disabled | vision | audio_doa | fused
+  mock_hz: 0.5  # 降低 mock 频率
+  mock_source: vision
+  mock_status: NO_SIGNAL
+  mock_bearing_deg_start: 0
+  mock_bearing_deg_step: 15
+  mock_confidence: 0.6
+
+# === 视觉推理配置（内存敏感） ===
+vision:
+  enabled: false  # 生产环境启用
+  model: yolov8n  # nano 模型，最轻量
+  # 推理图像尺寸（越小越快越省内存）
+  imgsz: 416
+  # 跳帧：每 2 帧推理 1 次
+  frame_skip: 2
+  # 置信度阈值
+  conf_threshold: 0.5
+  # 目标类别（只检测需要的）
+  classes: [0]  # 0=person
+  # 设备：cpu（Pi 无 CUDA）
+  device: cpu
+  # 推理超时（ms），超时丢帧
+  timeout_ms: 500
+
+# === 融合配置 ===
+fusion:
+  enabled: false
+  # 声-视确认链路
+  audio_trigger_vision: true
+  # 融合窗口（秒）
+  window_sec: 2.0
+
+# === 服务配置 ===
+service:
+  host: "0.0.0.0"
+  port: 8000
+  gcs_label: "树莓派"
+  status_interval_sec: 1
+  telemetry_timeout_sec: 3
+  ws_heartbeat_interval_sec: 30
+  ws_heartbeat_timeout_sec: 60
+  command_rate_limit_hz: 2
+  command_whitelist:
+    - SET_YAW
+    - SET_MODE
+    - STOP
+
+# === 控制桥接配置 ===
+control:
+  enabled: false
+  # 默认偏航速率
+  default_yaw_rate_deg_s: 30
+
+# === 存储策略 ===
+storage:
+  # 最大保留运行数
+  max_runs: 5
+  # 单次运行最大大小（MB）
+  max_run_size_mb: 500
+  # 低空间警告阈值（MB）
+  low_space_warn_mb: 1000
+  # 自动清理
+  auto_cleanup: true
+
+# === 系统资源限制（供 systemd 参考） ===
+# 这些值会被 systemd 服务文件使用
+resource_limits:
+  # 最大内存（采集进程）
+  acq_memory_max_mb: 512
+  # 最大内存（推理进程）
+  infer_memory_max_mb: 768
+  # CPU 配额（百分比）
+  cpu_quota_percent: 80

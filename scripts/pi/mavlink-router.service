@@ -1,0 +1,27 @@
+[Unit]
+Description=MAVLink Router - 遥测数据分发
+Documentation=https://github.com/mavlink-router/mavlink-router
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/mavlink-routerd -c /etc/mavlink-router/main.conf
+Restart=always
+RestartSec=3
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+# 串口权限
+SupplementaryGroups=dialout
+
+# 资源限制
+MemoryMax=64M
+CPUQuota=10%
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+[Unit]
+Description=Fly API Server - WebSocket/REST 服务
+Documentation=https://github.com/zhaowenjie817724/fly
+After=network.target fly-acq.service
+Wants=fly-acq.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/fly
+Environment="PATH=/home/pi/fly/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/pi/fly/.venv/bin/python apps/service/server.py --config configs/service.yaml --run latest
+Restart=always
+RestartSec=5
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/pi/fly/runs /home/pi/fly/logs
+PrivateTmp=true
+
+# 资源限制
+MemoryMax=256M
+MemoryHigh=200M
+CPUQuota=30%
+
+# OOM 优先级
+OOMScoreAdjust=-50
+
+[Install]
+WantedBy=multi-user.target

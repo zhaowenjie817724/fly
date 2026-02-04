@@ -1,0 +1,37 @@
+[Unit]
+Description=Fly Vision Inference - YOLO 推理服务
+Documentation=https://github.com/zhaowenjie817724/fly
+After=fly-acq.service
+BindsTo=fly-acq.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/fly
+Environment="PATH=/home/pi/fly/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+# 推理服务需要单独实现，这里是占位
+ExecStart=/home/pi/fly/.venv/bin/python apps/vision/yolo_infer.py --config configs/pi_bookworm.yaml --run latest
+Restart=always
+RestartSec=5
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/pi/fly/runs /home/pi/fly/logs
+PrivateTmp=true
+
+# 资源限制（推理吃内存）
+MemoryMax=768M
+MemoryHigh=600M
+CPUQuota=80%
+
+# OOM 优先级（推理可以被优先杀死）
+OOMScoreAdjust=100
+
+# 软限流：推理超时自动重启
+TimeoutStopSec=10
+WatchdogSec=120
+
+[Install]
+WantedBy=multi-user.target
