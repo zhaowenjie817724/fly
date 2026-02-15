@@ -193,6 +193,15 @@ class CameraCapture:
                     "height": int(frame.shape[0]),
                 }
                 index_handle.write(json.dumps(record, ensure_ascii=True) + "\n")
+
+                # 写入 latest.jpg 供 MJPEG 流端点使用
+                jpeg_quality = int(self.config.get("jpeg_quality", 80))
+                latest_path = self.output_dir / "latest.jpg"
+                try:
+                    cv2.imwrite(str(latest_path), frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
+                except Exception:
+                    pass
+
                 frame_id += 1
                 self.stats.increment()
 

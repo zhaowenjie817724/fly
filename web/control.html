@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通感之眼 - PC端控制面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+        }
+        .header h2 {
+            font-size: 20px;
+            color: #333;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+        .status-dot.connected {
+            background: #10b981;
+        }
+        .status-dot.disconnected {
+            background: #ef4444;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* 遥测数据 */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .telemetry-item {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+        .telemetry-item.alt {
+            border-left-color: #f59e0b;
+        }
+        .telemetry-item.speed {
+            border-left-color: #8b5cf6;
+        }
+        .telemetry-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .telemetry-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            font-family: "Courier New", monospace;
+        }
+        .telemetry-unit {
+            font-size: 12px;
+            color: #999;
+            margin-left: 4px;
+        }
+
+        /* 控制按钮 */
+        .control-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 44px;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            grid-column: 1 / -1;
+            font-size: 16px;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 模式选择 */
+        .mode-section {
+            margin-top: 20px;
+        }
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .mode-btn {
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .mode-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .mode-btn.active {
+            border-color: #3b82f6;
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* 日志 */
+        .log-section {
+            margin-top: 20px;
+        }
+        .log-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .log-item {
+            padding: 10px;
+            background: #f9fafb;
+            border-left: 3px solid #10b981;
+            margin-bottom: 8px;
+            font-size: 13px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .log-item.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        .log-time {
+            color: #999;
+            font-family: "Courier New", monospace;
+        }
+        .log-cmd {
+            flex: 1;
+            margin: 0 12px;
+            color: #333;
+            font-family: "Courier New", monospace;
+            word-break: break-all;
+        }
+        .log-status {
+            font-weight: bold;
+            color: #10b981;
+        }
+        .log-item.error .log-status {
+            color: #ef4444;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .telemetry-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* 事件流 */
+        .event-stream {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f9fafb;
+        }
+        .event-item {
+            padding: 10px;
+            background: white;
+            border-left: 3px solid #3b82f6;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .event-type {
+            font-weight: bold;
+            color: #3b82f6;
+            text-transform: uppercase;
+        }
+        .event-time {
+            color: #999;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .settings-panel {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .settings-group {
+            margin-bottom: 15px;
+        }
+        .settings-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧：状态和遥测 -->
+        <div class="panel">
+            <div class="header">
+                <h2>系统状态</h2>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">正在连接...</span>
+                </div>
+            </div>
+
+            <div class="settings-panel">
+                <div class="settings-group">
+                    <div class="settings-label">后端地址</div>
+                    <input type="text" id="httpBase" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000">
+                </div>
+                <div class="settings-group">
+                    <div class="settings-label">WebSocket地址</div>
+                    <input type="text" id="wsUrl" value="ws://127.0.0.1:8000/ws" placeholder="ws://127.0.0.1:8000/ws">
+                </div>
+                <button class="btn btn-primary" style="grid-column: 1 / -1; width: 100%;" onclick="connectWebSocket()">重新连接</button>
+            </div>
+
+            <div class="telemetry-grid">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Yaw (航向)</div>
+                    <div class="telemetry-value"><span id="yaw">0</span><span class="telemetry-unit">°</span></div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Roll (横滚)</div>
+                    <div class="telemetry-value"><span id="roll">0</span><span class="telemetry-unit">°</span></div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">Pitch (俯仰)</div>
+                    <div class="telemetry-value"><span id="pitch">0</span><span class="telemetry-unit">°</span></div>
+                </div>
+                <div class="telemetry-item alt">
+                    <div class="telemetry-label">高度</div>
+                    <div class="telemetry-value"><span id="altitude">0</span><span class="telemetry-unit">m</span></div>
+                </div>
+                <div class="telemetry-item alt">
+                    <div class="telemetry-label">速度</div>
+                    <div class="telemetry-value"><span id="velocity">0</span><span class="telemetry-unit">m/s</span></div>
+                </div>
+                <div class="telemetry-item alt">
+                    <div class="telemetry-label">模式</div>
+                    <div class="telemetry-value" style="font-size: 16px;" id="mode">--</div>
+                </div>
+            </div>
+
+            <div class="log-section">
+                <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">实时事件</h3>
+                <div class="event-stream" id="eventStream">
+                    <div style="color: #999; text-align: center; padding: 20px;">等待事件流...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：控制 -->
+        <div class="panel">
+            <div class="header">
+                <h2>无人机控制</h2>
+            </div>
+
+            <div class="control-buttons">
+                <button class="btn btn-primary" onclick="sendCommand('SET_YAW', {yaw_deg: -30})">左转 -30°</button>
+                <button class="btn btn-primary" onclick="sendCommand('SET_YAW', {yaw_deg: 30})">右转 +30°</button>
+                <button class="btn btn-primary" onclick="sendCommand('SET_YAW', {yaw_deg: -10})">微左 -10°</button>
+                <button class="btn btn-primary" onclick="sendCommand('SET_YAW', {yaw_deg: 10})">微右 +10°</button>
+            </div>
+
+            <div class="mode-section">
+                <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">飞行模式</h3>
+                <div class="mode-grid">
+                    <button class="mode-btn" onclick="setMode('LOITER')">悬停</button>
+                    <button class="mode-btn" onclick="setMode('GUIDED')">引导</button>
+                    <button class="mode-btn" onclick="setMode('RTL')">返航</button>
+                    <button class="mode-btn" onclick="setMode('LAND')">降落</button>
+                </div>
+            </div>
+
+            <button class="btn btn-danger" onclick="emergencyStop()">⚠ 紧急停止 ⚠</button>
+
+            <div class="log-section">
+                <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">命令日志</h3>
+                <div class="log-list" id="commandLog">
+                    <div style="color: #999; text-align: center;">无命令记录</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let eventCount = 0;
+        const maxEvents = 50;
+
+        function getHttpBase() {
+            return document.getElementById('httpBase').value || 'http://127.0.0.1:8000';
+        }
+
+        function getWsUrl() {
+            return document.getElementById('wsUrl').value || 'ws://127.0.0.1:8000/ws';
+        }
+
+        function updateStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (connected) {
+                dot.classList.add('connected');
+                dot.classList.remove('disconnected');
+                text.textContent = '已连接';
+            } else {
+                dot.classList.add('disconnected');
+                dot.classList.remove('connected');
+                text.textContent = '已断开';
+            }
+        }
+
+        function connectWebSocket() {
+            const wsUrl = getWsUrl();
+            console.log('连接WebSocket:', wsUrl);
+
+            if (ws) {
+                ws.close();
+            }
+
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => {
+                console.log('WebSocket已连接');
+                updateStatus(true);
+            };
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    handleMessage(data);
+                } catch (err) {
+                    console.error('消息解析错误:', err);
+                }
+            };
+            ws.onerror = (err) => {
+                console.error('WebSocket错误:', err);
+                updateStatus(false);
+            };
+            ws.onclose = () => {
+                console.log('WebSocket已断开');
+                updateStatus(false);
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        function handleMessage(data) {
+            const { type, payload } = data;
+
+            if (type === 'telemetry') {
+                const att = payload.attitude || {};
+                const pos = payload.position || {};
+                document.getElementById('roll').textContent = (att.roll_deg || 0).toFixed(1);
+                document.getElementById('pitch').textContent = (att.pitch_deg || 0).toFixed(1);
+                document.getElementById('yaw').textContent = (att.yaw_deg || 0).toFixed(1);
+                document.getElementById('altitude').textContent = (pos.altitude_m || 0).toFixed(1);
+                document.getElementById('velocity').textContent = (pos.velocity_mps || 0).toFixed(2);
+            } else if (type === 'status') {
+                const connected = payload.link_status === 'OK';
+                updateStatus(connected);
+            } else if (type === 'event') {
+                addEventToStream(payload);
+            }
+        }
+
+        function addEventToStream(event) {
+            const stream = document.getElementById('eventStream');
+            if (stream.children[0]?.textContent.includes('等待事件流')) {
+                stream.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = 'event-item';
+            const time = event.time?.epoch_ms || Date.now();
+            const timeStr = new Date(time).toLocaleTimeString('zh-CN');
+            const type = event.type || 'UNKNOWN';
+
+            item.innerHTML = `
+                <div class="event-type">${type}</div>
+                <div>${event.note || event.description || ''}</div>
+                <div class="event-time">${timeStr}</div>
+            `;
+
+            stream.insertBefore(item, stream.firstChild);
+
+            eventCount++;
+            if (stream.children.length > maxEvents) {
+                stream.removeChild(stream.lastChild);
+            }
+        }
+
+        function addLog(cmd, success, params = {}) {
+            const log = document.getElementById('commandLog');
+            if (log.children[0]?.textContent.includes('无命令记录')) {
+                log.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = `log-item ${success ? '' : 'error'}`;
+            const time = new Date().toLocaleTimeString('zh-CN');
+            const paramStr = Object.keys(params).length > 0 ? JSON.stringify(params) : '';
+
+            item.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-cmd">${cmd} ${paramStr}</span>
+                <span class="log-status">${success ? '✓' : '✗'}</span>
+            `;
+
+            log.insertBefore(item, log.firstChild);
+            if (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function sendCommand(type, params = {}) {
+            const httpBase = getHttpBase();
+            const endpoint = type === 'SET_YAW' ? '/api/control/yaw' :
+                           type === 'SET_MODE' ? '/api/control/mode' :
+                           type === 'STOP' ? '/api/control/estop' : '/command';
+
+            fetch(`${httpBase}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(type === 'STOP' ? {} : params)
+            }).then(res => res.json()).then(data => {
+                const success = data.accepted;
+                addLog(`${type} ${JSON.stringify(params)}`, success);
+                if (success) {
+                    alert(`✓ ${type} 已发送`);
+                } else {
+                    alert(`✗ 发送失败: ${data.error}`);
+                }
+            }).catch(err => {
+                console.error('网络错误:', err);
+                addLog(`${type}`, false);
+                alert('网络错误: ' + err.message);
+            });
+        }
+
+        function setMode(mode) {
+            sendCommand('SET_MODE', { mode });
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.includes(mode === 'LOITER' ? '悬停' :
+                                            mode === 'GUIDED' ? '引导' :
+                                            mode === 'RTL' ? '返航' : '降落')) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function emergencyStop() {
+            if (confirm('⚠ 确认紧急停止？无人机将立即停止所有运动！')) {
+                sendCommand('STOP', {});
+                setMode('LOITER');
+            }
+        }
+
+        // 页面加载时自动连接
+        window.addEventListener('load', connectWebSocket);
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+        });
+    </script>
+</body>
+</html>

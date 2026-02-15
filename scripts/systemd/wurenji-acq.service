@@ -1,0 +1,35 @@
+[Unit]
+Description=WuRenji Data Acquisition Service
+After=network-online.target mavlink-router.service
+Wants=network-online.target wurenji-api.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="PATH=__FLY_DIR__/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=__FLY_DIR__/.venv/bin/python apps/acquisition/run_acq.py --config __ACQ_CONFIG__ --duration 0
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-acq
+
+# Memory budget for Pi 5 2GB
+MemoryMax=512M
+MemoryHigh=400M
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+SupplementaryGroups=video dialout
+
+# OOM priority (acquisition is more important than inference)
+OOMScoreAdjust=-100
+WatchdogSec=60
+
+[Install]
+WantedBy=multi-user.target

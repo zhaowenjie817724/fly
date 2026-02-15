@@ -1,6 +1,7 @@
-# 树莓派 Raspberry Pi OS (Bookworm) 部署指南
+# 树莓派 Raspberry Pi OS 部署指南
 
-> 适用于 Raspberry Pi OS (Legacy) Full - Debian 12 Bookworm / 64-bit / 带桌面
+> 适用于 Raspberry Pi OS (Legacy) Full - 64-bit / 带桌面
+> 已测试：Bullseye (Debian 11) / Bookworm (Debian 12)
 > 硬件：Raspberry Pi 4/5，2GB+ 内存，32GB+ SD卡
 
 ---
@@ -109,9 +110,12 @@ sudo systemctl enable --now zramswap
 
 ### 3.2 降低 GPU 内存分配
 
-编辑 `/boot/firmware/config.txt`（Bookworm 路径）：
+编辑 boot 配置文件（路径因版本而异）：
 
 ```bash
+# Bullseye (Legacy):
+sudo nano /boot/config.txt
+# Bookworm:
 sudo nano /boot/firmware/config.txt
 ```
 
@@ -194,7 +198,7 @@ camera:
 
 ### 5.2 CSI 摄像头（官方摄像头模块）
 
-Raspberry Pi OS Bookworm 使用 libcamera 栈：
+Raspberry Pi OS 使用 libcamera 栈：
 
 ```bash
 # 检查摄像头
@@ -291,9 +295,11 @@ Port=14551
 
 ### 6.3 systemd 服务
 
+mavlink-router 服务由 `install-fly-services.sh` 统一安装，无需手动复制：
+
 ```bash
-sudo cp scripts/pi/mavlink-router.service /etc/systemd/system/
-sudo systemctl daemon-reload
+# 服务已在部署脚本中自动安装，如需手动安装：
+bash scripts/pi/install-fly-services.sh
 sudo systemctl enable --now mavlink-router
 ```
 
@@ -325,21 +331,18 @@ python apps/service/server.py --config configs/service.yaml --run latest
 
 ### 7.2 systemd 服务（生产环境）
 
+服务通过 `install-fly-services.sh` 安装，使用模板渲染实际路径：
+
 ```bash
-# 安装服务
-sudo cp scripts/pi/fly-acq.service /etc/systemd/system/
-sudo cp scripts/pi/fly-server.service /etc/systemd/system/
-sudo systemctl daemon-reload
+# 安装所有 wurenji-* 服务（部署脚本已自动执行）
+bash scripts/pi/install-fly-services.sh
 
-# 启用
-sudo systemctl enable fly-acq fly-server
-
-# 启动
-sudo systemctl start fly-acq fly-server
+# 启动全部服务
+sudo systemctl start mavlink-router wurenji-acq wurenji-api wurenji-fsm wurenji-watchdog
 
 # 查看日志
-journalctl -u fly-acq -f
-journalctl -u fly-server -f
+journalctl -u wurenji-acq -f
+journalctl -u wurenji-api -f
 ```
 
 ---
@@ -510,9 +513,9 @@ vcgencmd measure_temp
 # 查看 CPU 频率
 vcgencmd get_config arm_freq
 
-# 重启 fly 服务
-sudo systemctl restart fly-acq fly-server
+# 重启 wurenji 服务
+sudo systemctl restart wurenji-acq wurenji-api wurenji-fsm
 
-# 查看 fly 日志
-journalctl -u fly-acq -n 50
+# 查看 wurenji 日志
+journalctl -u wurenji-acq -n 50
 ```

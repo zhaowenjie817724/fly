@@ -1,0 +1,33 @@
+[Unit]
+Description=WuRenji FastAPI Backend Service
+After=network-online.target wurenji-acq.service
+Requires=wurenji-acq.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="PATH=__FLY_DIR__/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=__FLY_DIR__/.venv/bin/python apps/service/server.py --config __API_CONFIG__ --run latest
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-api
+
+# Memory budget
+MemoryMax=256M
+MemoryHigh=200M
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+
+# OOM priority
+OOMScoreAdjust=-50
+
+[Install]
+WantedBy=multi-user.target

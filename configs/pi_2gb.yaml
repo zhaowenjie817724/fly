@@ -2,6 +2,7 @@ run:
   output_root: runs
   duration_sec: 1800
   stats_interval_sec: 5
+  max_runs_kept: 5        # 自动清理旧 run 数据
 
 logging:
   level: INFO
@@ -10,7 +11,7 @@ logging:
 
 camera:
   enabled: true
-  mode: device  # device | mock
+  mode: device  # device | mock | libcamera
   device_index: 0
   width: 640
   height: 360
@@ -18,6 +19,7 @@ camera:
   codec: mp4v
   snapshot_interval_sec: 5
   fps_warn_below: 5
+  jpeg_quality: 70        # MJPEG 输出质量 (降低节省带宽)
 
 audio:
   enabled: false
@@ -39,3 +41,23 @@ telemetry:
 observation:
   enabled: false
   mode: disabled
+
+# Pi 5 (2GB) 内存优化
+service:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1              # 单 worker 节省内存
+  ws_max_clients: 4       # 限制 WebSocket 并发连接
+
+memory:
+  gc_aggressive: true     # 启动时设置 gc.set_threshold(100, 5, 5)
+  opencv_threads: 2       # cv2.setNumThreads(2)
+  numpy_threads: 2        # 限制 BLAS 线程数
+
+vision:
+  enabled: false          # 2GB 默认关闭 YOLO (内存不足)
+  # 若需启用, 使用 INT8 量化:
+  # model: yolov8n_int8.pt
+  # imgsz: 320
+  # half: false
+  # conf: 0.4

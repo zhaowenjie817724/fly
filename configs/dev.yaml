@@ -31,7 +31,7 @@ audio:
 
 telemetry:
   enabled: true
-  mode: mock  # mock | mavlink_udp | mavlink_serial
+  mode: mavlink_udp  # mock | mavlink_udp | mavlink_serial
   mock_hz: 2
   emit_hz: 2
   link_degraded_after_sec: 2

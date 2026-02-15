@@ -18,7 +18,7 @@ def _add_repo_to_path() -> Path:
 repo_root = _add_repo_to_path()
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query  # noqa: E402
-from fastapi.responses import JSONResponse, HTMLResponse  # noqa: E402
+from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse, FileResponse  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from apps.acquisition.config_utils import load_config  # noqa: E402
@@ -209,6 +209,7 @@ def create_app(run_dir: Path, service_cfg: dict) -> FastAPI:
 
     # ========== 基础路由 ==========
     @app.get("/")
+    @app.get("/dashboard")
     async def root():
         if dashboard_path.exists():
             return HTMLResponse(dashboard_path.read_text(encoding="utf-8"))
@@ -338,7 +339,6 @@ def create_app(run_dir: Path, service_cfg: dict) -> FastAPI:
     @app.get("/api/snapshot/{frame_id}")
     async def api_snapshot(frame_id: str):
         """获取事件快照图片"""
-        from fastapi.responses import FileResponse
         try:
             fid = int(frame_id)
             snapshot_path = snapshots_dir / f"det_{fid:06d}.jpg"
@@ -412,6 +412,47 @@ def create_app(run_dir: Path, service_cfg: dict) -> FastAPI:
     @app.post("/command")
     async def command(payload: dict):
         return await _handle_command(payload, state, cfg, commands_path)
+
+    # ========== 视频流 API ==========
+
+    video_dir = run_dir / "video"
+    latest_frame_path = video_dir / "latest.jpg"
+
+    @app.get("/api/video/snapshot")
+    async def video_snapshot():
+        """获取最新摄像头帧 (JPEG)"""
+        if latest_frame_path.exists():
+            return FileResponse(str(latest_frame_path), media_type="image/jpeg")
+        return JSONResponse({"error": "no_frame"}, status_code=404)
+
+    @app.get("/api/video/mjpeg")
+    async def video_mjpeg():
+        """MJPEG 视频流 (multipart/x-mixed-replace)"""
+        async def generate():
+            boundary = b"--frame\r\n"
+            last_mtime = 0.0
+            while True:
+                try:
+                    if latest_frame_path.exists():
+                        mtime = latest_frame_path.stat().st_mtime
+                        if mtime != last_mtime:
+                            data = latest_frame_path.read_bytes()
+                            last_mtime = mtime
+                            yield (
+                                boundary
+                                + b"Content-Type: image/jpeg\r\n"
+                                + f"Content-Length: {len(data)}\r\n\r\n".encode()
+                                + data
+                                + b"\r\n"
+                            )
+                except Exception:
+                    pass
+                await asyncio.sleep(0.05)  # ~20 FPS max poll rate
+
+        return StreamingResponse(
+            generate(),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
 
     @app.websocket("/ws")
     async def ws_endpoint(websocket: WebSocket):

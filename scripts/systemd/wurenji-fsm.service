@@ -1,0 +1,30 @@
+[Unit]
+Description=WuRenji FSM State Machine Service
+After=network-online.target wurenji-acq.service
+Requires=wurenji-acq.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="PATH=__FLY_DIR__/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=__FLY_DIR__/.venv/bin/python apps/control/fsm_runner.py --config __FSM_CONFIG__ --run latest --dry-run
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-fsm
+
+# Memory budget
+MemoryMax=128M
+MemoryHigh=100M
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

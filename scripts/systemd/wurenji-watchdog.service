@@ -1,0 +1,26 @@
+[Unit]
+Description=WuRenji Process Watchdog
+After=network-online.target wurenji-acq.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="FLY_DIR=__FLY_DIR__" "RUNS_DIR=__FLY_DIR__/runs"
+ExecStart=__FLY_DIR__/scripts/watchdog.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-watchdog
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
