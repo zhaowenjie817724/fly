@@ -1,90 +1,90 @@
-# Ubuntu 24.04 LTS (ARM64) 树莓派优化配置
+# Ubuntu 24.04 LTS (ARM64) 树莓派配置 - 通感之眼2.0
 # 适用于：Raspberry Pi 5，2GB 内存，Ubuntu 24.04.x
-# 核心原则：内存峰值控制、推理降频、事件驱动落盘
+# 与 pi_stereo.yaml 结构相同，串口路径使用 Ubuntu 默认值
 
 run:
   output_root: runs
-  duration_sec: 0  # 0 = 持续运行直到中断
+  duration_sec: 0          # 0 = 持续运行
   stats_interval_sec: 10
-  max_runs_kept: 5
 
 logging:
   level: INFO
   jsonl: true
   dir: logs
 
-# === 摄像头配置（内存优化） ===
+# === 视觉相机（yolo_infer 独占 /dev/video0） ===
 camera:
-  enabled: true
-  mode: device  # device | mock | picamera2
-  device_index: 0
-  # 640x360 @ 10fps 显著降低内存和 CPU
-  width: 640
-  height: 360
-  fps: 10
-  codec: mp4v
-  # 快照间隔延长到 5 秒，减少 SD 卡写入
-  snapshot_interval_sec: 5
-  fps_warn_below: 5
-
-# === 音频配置（默认禁用） ===
-audio:
+  # yolo_infer.py 独占 /dev/video0 做实时推理，run_acq 不开相机避免冲突
   enabled: false
-  mode: disabled  # disabled | mic | wav_file | mock
+  mode: device
+  device_index: 0
+  width: 2160           # Sunplus 并排双目实际宽度
+  height: 1080
+  fps: 3                # 该分辨率下 V4L2 最高 3fps
+  codec: mp4v
+  snapshot_interval_sec: 5
+  jpeg_quality: 75
+
+# === 热成像相机（thermal_infer.py 独占 /dev/video1） ===
+thermal:
+  enabled: true
+  mode: device          # device | mock
+  device_index: 1       # 通常 /dev/video1（PureThermal USB / SEEK Compact）
+  fov_deg: 50           # 热成像镜头水平 FOV（度），按实际值修改
+  hotspot_percentile: 95
+  min_area_px: 30
+  max_fps: 9.0
+  emit_no_signal: true
+  no_signal_interval_sec: 2.0
+  save_snapshots: true
+  snapshot_interval_sec: 10
+
+# === 麦克风阵列（doa_runner.py） ===
+audio:
+  enabled: true
+  mode: mic
+  device_index: 0
   sample_rate: 16000
-  channels: 1
+  channels: 2
   block_ms: 20
   overrun_warn: 3
 
-# === 遥测配置（MAVLink） ===
+# === DOA 声源定位参数 ===
+doa:
+  mic_distance_m: 0.05
+  speed_sound_m_s: 343.0
+  sample_rate: 16000
+  block_ms: 100
+  overlap_ratio: 0.5
+  smoothing: 0.4
+  conf_threshold: 0.1
+  window: hann
+  pair_mode: reference
+  pre_emphasis: 0.97
+  max_history: 50
+
+# === 遥测（MAVLink） ===
+# Ubuntu + Pixhawk USB → /dev/ttyACM0（Pi OS 上通常是 /dev/ttyAMA0）
 telemetry:
   enabled: true
-  mode: mavlink_udp  # mock | mavlink_udp | mavlink_serial
-  emit_hz: 2  # 降低发送频率节省 CPU
+  mode: mavlink_udp
+  emit_hz: 2
   link_degraded_after_sec: 2
   link_lost_after_sec: 5
   mavlink:
-    # mavlink-router 输出到 14551
-    udp: "udp:127.0.0.1:14551"
-    # 如直连飞控串口：
-    # serial_port: "/dev/ttyAMA0"
-    # baud: 115200
+    udp: "udp:0.0.0.0:14551"
+    # Ubuntu 直连 Pixhawk USB 串口
+    serial_port: "/dev/ttyACM0"
+    baud: 115200
 
-# === 观测配置（推理相关） ===
+# === 观测融合（三路实时融合） ===
 observation:
   enabled: true
-  mode: mock  # mock | disabled | vision | audio_doa | fused
-  mock_hz: 0.5  # 降低 mock 频率
-  mock_source: vision
-  mock_status: NO_SIGNAL
-  mock_bearing_deg_start: 0
-  mock_bearing_deg_step: 15
-  mock_confidence: 0.6
-
-# === 视觉推理配置（内存敏感） ===
-vision:
-  enabled: false  # 生产环境启用
-  model: yolov8n  # nano 模型，最轻量
-  # 推理图像尺寸（越小越快越省内存）
-  imgsz: 416
-  # 跳帧：每 2 帧推理 1 次
-  frame_skip: 2
-  # 置信度阈值
-  conf_threshold: 0.5
-  # 目标类别（只检测需要的）
-  classes: [0]  # 0=person
-  # 设备：cpu（Pi 无 CUDA）
-  device: cpu
-  # 推理超时（ms），超时丢帧
-  timeout_ms: 500
-
-# === 融合配置 ===
-fusion:
-  enabled: false
-  # 声-视确认链路
-  audio_trigger_vision: true
-  # 融合窗口（秒）
-  window_sec: 2.0
+  mode: fused_live
+  fused_live_poll_sec: 0.05
+  fused_emit_interval_sec: 0.2
+  fused_max_gap_ms: 600
+  no_signal_interval_sec: 2.0
 
 # === 服务配置 ===
 service:
@@ -101,28 +101,9 @@ service:
     - SET_MODE
     - STOP
 
-# === 控制桥接配置 ===
-control:
-  enabled: false
-  # 默认偏航速率
-  default_yaw_rate_deg_s: 30
-
 # === 存储策略 ===
 storage:
-  # 最大保留运行数
   max_runs: 5
-  # 单次运行最大大小（MB）
   max_run_size_mb: 500
-  # 低空间警告阈值（MB）
   low_space_warn_mb: 1000
-  # 自动清理
   auto_cleanup: true
-
-# === 系统资源限制（供 systemd 参考） ===
-resource_limits:
-  # 最大内存（采集进程）
-  acq_memory_max_mb: 512
-  # 最大内存（推理进程）
-  infer_memory_max_mb: 768
-  # CPU 配额（百分比）
-  cpu_quota_percent: 80

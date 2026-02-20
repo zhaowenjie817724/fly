@@ -285,6 +285,92 @@ else
     log_warn "install-fly-services.sh 未找到，跳过服务安装"
 fi
 
+# 创建便捷启动脚本（手动调试用）
+cat > "$FLY_DIR/start.sh" << 'STARTEOF'
+#!/bin/bash
+# 通感之眼2.0 便捷启动 (手动调试用，生产环境请使用 systemd 服务)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+source .venv/bin/activate
+
+DURATION=${1:-600}
+CONFIG="configs/pi_ubuntu.yaml"
+
+echo "=========================================="
+echo "  通感之眼2.0 启动中..."
+echo "  时长: ${DURATION}s | 配置: $CONFIG"
+echo "=========================================="
+
+# 清理旧进程
+pkill -f "run_acq.py" 2>/dev/null || true
+pkill -f "apps/service/server.py" 2>/dev/null || true
+pkill -f "fsm_runner.py" 2>/dev/null || true
+pkill -f "yolo_infer.py" 2>/dev/null || true
+pkill -f "thermal_infer.py" 2>/dev/null || true
+pkill -f "doa_runner.py" 2>/dev/null || true
+sleep 1
+
+# 启动数据采集（遥测+观测管线）
+echo "[1/6] 数据采集..."
+python apps/acquisition/run_acq.py --config "$CONFIG" --duration "$DURATION" &
+ACQ_PID=$!
+sleep 3
+
+# 启动 YOLO 推理（独占可见光相机）
+echo "[2/6] YOLO 视觉推理..."
+python apps/vision/yolo_infer.py --config configs/vision.yaml --camera 0 --run latest &
+INFER_PID=$!
+sleep 1
+
+# 启动热成像推理（独占热像仪）
+echo "[3/6] 热成像推理..."
+python apps/thermal/thermal_infer.py --config "$CONFIG" --run latest &
+THERMAL_PID=$!
+sleep 1
+
+# 启动 DOA（麦克风阵列声源定位）
+echo "[4/6] DOA 声源定位..."
+python apps/audio/doa_runner.py --config "$CONFIG" --run latest &
+DOA_PID=$!
+sleep 1
+
+# 启动后端服务
+echo "[5/6] 后端服务..."
+python apps/service/server.py --config configs/service.yaml --run latest &
+SERVICE_PID=$!
+sleep 1
+
+# 启动 FSM（dry-run，待飞控接入后去掉 --dry-run）
+echo "[6/6] FSM 状态机..."
+python apps/control/fsm_runner.py --config configs/fsm.yaml --run latest --dry-run &
+FSM_PID=$!
+
+IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+echo ""
+echo "=========================================="
+echo "  所有服务已启动"
+echo "  仪表板: http://${IP:-localhost}:8000"
+echo "  健康:   http://${IP:-localhost}:8000/health"
+echo "  按 Ctrl+C 停止"
+echo "=========================================="
+
+cleanup() {
+    echo ""
+    echo "停止服务..."
+    kill $ACQ_PID $INFER_PID $THERMAL_PID $DOA_PID $SERVICE_PID $FSM_PID 2>/dev/null || true
+    wait 2>/dev/null
+    echo "已停止"
+}
+trap cleanup EXIT INT TERM
+
+wait $ACQ_PID 2>/dev/null
+STARTEOF
+
+chmod +x "$FLY_DIR/start.sh"
+log_ok "便捷启动脚本: $FLY_DIR/start.sh (调试用)"
+
 # ----------------------------------------------------------
 # 部署完成
 # ----------------------------------------------------------
@@ -293,20 +379,20 @@ echo "=========================================="
 echo -e "  ${GREEN}Ubuntu 24.04 部署完成!${NC}"
 echo "=========================================="
 echo ""
-echo "  快速启动:"
-echo "    sudo systemctl start mavlink-router wurenji-acq wurenji-api wurenji-fsm wurenji-watchdog"
+echo "  启动服务 (推荐):"
+echo "    sudo systemctl start mavlink-router wurenji-acq wurenji-api wurenji-infer wurenji-thermal wurenji-doa wurenji-fsm wurenji-watchdog"
 echo ""
 echo "  查看状态:"
-echo "    sudo systemctl status wurenji-acq"
+echo "    sudo systemctl status wurenji-acq wurenji-infer wurenji-thermal wurenji-doa"
 echo ""
 echo "  查看日志:"
 echo "    journalctl -u wurenji-acq -f"
+echo "    journalctl -u wurenji-infer -f"
 echo ""
-echo "  手动启动:"
+echo "  手动调试:"
 echo "    cd $FLY_DIR"
-echo "    source .venv/bin/activate"
-echo "    python apps/acquisition/run_acq.py --config configs/pi_ubuntu.yaml"
-echo "    python apps/service/server.py --config configs/service.yaml --run latest"
+echo "    ./start.sh           # 默认10分钟"
+echo "    ./start.sh 3600      # 1小时"
 echo ""
 if [ -n "$FC_PORT" ]; then
     echo "  飞控连接 ($FC_PORT):"

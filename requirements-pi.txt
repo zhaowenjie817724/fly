@@ -8,3 +8,4 @@ psutil
 fastapi
 uvicorn
 websockets
+ultralytics
