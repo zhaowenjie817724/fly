@@ -1,0 +1,36 @@
+[Unit]
+Description=WuRenji DOA (Direction of Arrival) Audio Service
+After=network-online.target wurenji-acq.service
+Wants=wurenji-acq.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="PATH=__FLY_DIR__/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=__FLY_DIR__/.venv/bin/python apps/audio/doa_runner.py --config configs/pi_stereo.yaml --run latest
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-doa
+
+# Memory budget (numpy + sounddevice buffers)
+MemoryMax=128M
+MemoryHigh=100M
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+SupplementaryGroups=audio
+
+# OOM priority
+OOMScoreAdjust=50
+WatchdogSec=60
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

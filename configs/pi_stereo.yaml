@@ -1,6 +1,6 @@
 run:
   output_root: runs
-  duration_sec: 1800
+  duration_sec: 0          # 0 = 持续运行
   stats_interval_sec: 10
 
 logging:
@@ -8,8 +8,9 @@ logging:
   jsonl: true
   dir: logs
 
+# === 视觉相机（yolo_infer 独占 /dev/video0） ===
 camera:
-  # yolo_infer.py 独占 /dev/video0 做实时推理，run_acq.py 不开相机避免冲突
+  # yolo_infer.py 独占 /dev/video0 做实时推理，run_acq 不开相机避免冲突
   enabled: false
   mode: device
   device_index: 0
@@ -20,25 +21,61 @@ camera:
   snapshot_interval_sec: 5
   jpeg_quality: 75
 
-audio:
-  enabled: false
-  mode: disabled
+# === 热成像相机（thermal_infer.py 独占 /dev/video1） ===
+thermal:
+  enabled: true
+  mode: device          # device | mock
+  device_index: 1       # 通常 /dev/video1（PureThermal USB / SEEK Compact）
+  fov_deg: 50           # 热成像镜头水平 FOV（度），按实际值修改
+  hotspot_percentile: 95 # 取亮度前 5% 为热点区域
+  min_area_px: 30       # 热点最小面积（过滤噪声点）
+  max_fps: 9.0          # FLIR Lepton 最高 9Hz；SEEK Compact 最高 7.5Hz
+  emit_no_signal: true
+  no_signal_interval_sec: 2.0
+  save_snapshots: true
+  snapshot_interval_sec: 10
 
+# === 麦克风阵列（doa_runner.py） ===
+audio:
+  enabled: true
+  mode: mic
+  device_index: 0       # USB 麦克风阵列设备号（sounddevice），用 doa_runner.py 查询
+  sample_rate: 16000
+  channels: 2           # 双麦：左 ch0，右 ch1
+  block_ms: 20
+  overrun_warn: 3
+
+# === DOA 声源定位参数 ===
+doa:
+  mic_distance_m: 0.05      # 两麦之间间距 5cm（按实际硬件修改）
+  speed_sound_m_s: 343.0
+  sample_rate: 16000
+  block_ms: 100
+  overlap_ratio: 0.5
+  smoothing: 0.4
+  conf_threshold: 0.1
+  window: hann
+  pair_mode: reference      # reference: ch0 vs ch1; adjacent: 相邻对
+  pre_emphasis: 0.97
+  max_history: 50
+
+# === 遥测（MAVLink） ===
 telemetry:
   enabled: true
-  mode: mavlink_udp     # 接 mavlink-router UDP 14551
+  mode: mavlink_udp
   emit_hz: 2
   link_degraded_after_sec: 2
   link_lost_after_sec: 5
   mavlink:
-    udp: "udp:0.0.0.0:14551"   # 监听本机所有接口
+    udp: "udp:0.0.0.0:14551"
     serial_port: "/dev/ttyAMA0"
     baud: 115200
 
+# === 观测融合（三路实时融合） ===
 observation:
   enabled: true
-  # vision_live: 实时跟踪 yolo_infer.py 写入的 vision_yolo.jsonl
-  # mock: 全 mock，调试管线时用
-  mode: vision_live
-  vision_live_source: vision_yolo.jsonl   # yolo_infer.py 的输出文件名
-  vision_live_poll_sec: 0.1              # 轮询间隔（秒）
+  mode: fused_live          # 实时融合 vision_yolo + thermal_obs + doa_obs
+  fused_live_poll_sec: 0.05 # tail 轮询间隔
+  fused_emit_interval_sec: 0.2   # 融合输出帧率（5Hz）
+  fused_max_gap_ms: 600     # 超过此时长的记录视为无效
+  no_signal_interval_sec: 2.0

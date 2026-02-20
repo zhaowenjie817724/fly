@@ -321,20 +321,32 @@ python apps/acquisition/run_acq.py --config "$CONFIG" --duration "$DURATION" &
 ACQ_PID=$!
 sleep 3
 
-# 启动 YOLO 推理（独占摄像头）
-echo "[2/4] YOLO 视觉推理..."
+# 启动 YOLO 推理（独占可见光相机）
+echo "[2/6] YOLO 视觉推理..."
 python apps/vision/yolo_infer.py --config configs/vision.yaml --camera 0 --run latest &
 INFER_PID=$!
 sleep 1
 
+# 启动热成像推理（独占热像仪）
+echo "[3/6] 热成像推理..."
+python apps/thermal/thermal_infer.py --config configs/pi_stereo.yaml --run latest &
+THERMAL_PID=$!
+sleep 1
+
+# 启动 DOA（麦克风阵列声源定位）
+echo "[4/6] DOA 声源定位..."
+python apps/audio/doa_runner.py --config configs/pi_stereo.yaml --run latest &
+DOA_PID=$!
+sleep 1
+
 # 启动后端服务
-echo "[3/4] 后端服务..."
+echo "[5/6] 后端服务..."
 python apps/service/server.py --config configs/service.yaml --run latest &
 SERVICE_PID=$!
 sleep 1
 
 # 启动 FSM (dry-run 模式，待飞控接入后去掉 --dry-run)
-echo "[4/4] FSM 状态机..."
+echo "[6/6] FSM 状态机..."
 python apps/control/fsm_runner.py --config configs/fsm.yaml --run latest --dry-run &
 FSM_PID=$!
 
@@ -350,7 +362,7 @@ echo "=========================================="
 cleanup() {
     echo ""
     echo "停止服务..."
-    kill $ACQ_PID $INFER_PID $SERVICE_PID $FSM_PID 2>/dev/null || true
+    kill $ACQ_PID $INFER_PID $THERMAL_PID $DOA_PID $SERVICE_PID $FSM_PID 2>/dev/null || true
     wait 2>/dev/null
     echo "已停止"
 }

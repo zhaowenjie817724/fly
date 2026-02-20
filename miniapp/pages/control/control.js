@@ -1,3 +1,5 @@
+const app = getApp();
+
 Page({
   data: {
     connected: false,
@@ -6,9 +8,24 @@ Page({
     roll: '0.0',
     pitch: '0.0',
     yaw: '0.0',
+    // 视觉
     bearing: '--',
     obsConf: '--',
     obsStatus: 'NO_SIGNAL',
+    // 热成像
+    thermalBearing: '--',
+    thermalConf: '--',
+    thermalStatus: 'NO_SIGNAL',
+    // 声源 DOA
+    doaBearing: '--',
+    doaConf: '--',
+    doaStatus: 'NO_SIGNAL',
+    // 三路融合结果
+    fusedBearing: '--',
+    fusedConf: '--',
+    fusedStatus: 'NO_SIGNAL',
+    fusedSources: '无信号',
+    // 其他
     cmdLogs: [],
     httpBase: '',
     wsUrl: ''
@@ -33,7 +50,6 @@ Page({
   },
 
   connectWs() {
-    // 清理旧连接
     if (this._socket) {
       this._socket.close({});
       this._socket = null;
@@ -44,7 +60,6 @@ Page({
     }
 
     const { wsUrl } = this.data;
-    // 用 SocketTask API 避免全局监听器叠加
     const socket = wx.connectSocket({ url: wsUrl });
     this._socket = socket;
 
@@ -73,12 +88,13 @@ Page({
   _handleWsMessage(data, socket) {
     const type = data.type || '';
 
-    // 响应服务器心跳，防止服务器超时断连
+    // 心跳响应
     if (type === 'ping') {
       socket.send({ data: JSON.stringify({ type: 'pong', payload: data.payload }) });
       return;
     }
 
+    // 遥测姿态
     if (type === 'telemetry') {
       const payload = data.payload || {};
       const att = payload.attitude || {};
@@ -89,26 +105,65 @@ Page({
       });
     }
 
+    // 链路状态
     if (type === 'status') {
       const payload = data.payload || {};
-      // connected 状态由 onOpen/onClose 管理，这里只更新链路状态文字
       const linkOk = payload.link_status === 'OK';
       this.setData({ connected: linkOk });
     }
 
-    // 视觉观测数据（observation:vision_yolo 或 observation:observations）
+    // 观测数据：根据 stem（文件名）分流处理
     if (type.startsWith('observation:')) {
+      const stem = type.slice('observation:'.length);
       const payload = data.payload || {};
-      const status = payload.status || 'NO_SIGNAL';
-      if (status === 'OK' && payload.bearing_deg != null) {
-        this.setData({
-          bearing: payload.bearing_deg.toFixed(1),
-          obsConf: ((payload.confidence || 0) * 100).toFixed(0) + '%',
-          obsStatus: 'OK'
-        });
-      } else {
-        this.setData({ obsStatus: status });
-      }
+      this._updateSensor(stem, payload);
+    }
+  },
+
+  _updateSensor(stem, payload) {
+    const status = payload.status || 'NO_SIGNAL';
+    const hasSignal = status === 'OK' && payload.bearing_deg != null;
+    const bearingStr = hasSignal ? payload.bearing_deg.toFixed(1) : '--';
+    const confStr = hasSignal ? ((payload.confidence || 0) * 100).toFixed(0) + '%' : '--';
+
+    if (stem === 'vision_yolo') {
+      this.setData({
+        bearing: bearingStr,
+        obsConf: confStr,
+        obsStatus: status
+      });
+    } else if (stem === 'thermal_obs') {
+      this.setData({
+        thermalBearing: bearingStr,
+        thermalConf: confStr,
+        thermalStatus: status
+      });
+    } else if (stem === 'doa_obs') {
+      this.setData({
+        doaBearing: bearingStr,
+        doaConf: confStr,
+        doaStatus: status
+      });
+    } else if (stem === 'fused') {
+      const sources = (payload.extras && payload.extras.sources) || [];
+      const labelMap = { vision: '视觉', thermal: '热成像', audio: '声源' };
+      const sourceStr = sources.length
+        ? sources.map(s => labelMap[s] || s).join('+')
+        : '无信号';
+      this.setData({
+        fusedBearing: bearingStr,
+        fusedConf: confStr,
+        fusedStatus: status,
+        fusedSources: sourceStr
+      });
+    }
+    // observations.jsonl（vision_live 模式）也响应方位显示
+    else if (stem === 'observations') {
+      this.setData({
+        bearing: bearingStr,
+        obsConf: confStr,
+        obsStatus: status
+      });
     }
   },
 

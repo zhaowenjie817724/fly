@@ -30,6 +30,52 @@
     </view>
   </view>
 
+  <!-- 传感器融合状态 -->
+  <view class="control-section">
+    <text class="section-title">传感器状态</text>
+
+    <!-- 融合结果 -->
+    <view class="fusion-row">
+      <view class="fusion-badge {{fusedStatus === 'OK' ? 'badge-ok' : fusedStatus === 'DEGRADED' ? 'badge-warn' : 'badge-off'}}">
+        <text class="badge-icon">◈</text>
+        <text class="badge-label">融合</text>
+        <text class="badge-val">{{fusedBearing}}°</text>
+        <text class="badge-conf">{{fusedConf}}</text>
+      </view>
+      <text class="fusion-sources">{{fusedSources}}</text>
+    </view>
+
+    <!-- 三路传感器 -->
+    <view class="sensor-grid">
+      <!-- 视觉 -->
+      <view class="sensor-card {{obsStatus === 'OK' ? 'card-ok' : 'card-off'}}">
+        <text class="sensor-icon">◉</text>
+        <text class="sensor-name">视觉</text>
+        <text class="sensor-bearing">{{bearing}}°</text>
+        <text class="sensor-conf">{{obsConf}}</text>
+        <view class="sensor-dot {{obsStatus === 'OK' ? 'dot-ok' : 'dot-error'}}"></view>
+      </view>
+
+      <!-- 热成像 -->
+      <view class="sensor-card {{thermalStatus === 'OK' ? 'card-thermal' : 'card-off'}}">
+        <text class="sensor-icon">◈</text>
+        <text class="sensor-name">热成像</text>
+        <text class="sensor-bearing">{{thermalBearing}}°</text>
+        <text class="sensor-conf">{{thermalConf}}</text>
+        <view class="sensor-dot {{thermalStatus === 'OK' ? 'dot-thermal' : 'dot-error'}}"></view>
+      </view>
+
+      <!-- 声源定位 -->
+      <view class="sensor-card {{doaStatus === 'OK' ? 'card-doa' : 'card-off'}}">
+        <text class="sensor-icon">◎</text>
+        <text class="sensor-name">声源</text>
+        <text class="sensor-bearing">{{doaBearing}}°</text>
+        <text class="sensor-conf">{{doaConf}}</text>
+        <view class="sensor-dot {{doaStatus === 'OK' ? 'dot-doa' : 'dot-error'}}"></view>
+      </view>
+    </view>
+  </view>
+
   <!-- 偏航控制 -->
   <view class="control-section">
     <text class="section-title">偏航控制</text>

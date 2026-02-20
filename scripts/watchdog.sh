@@ -99,6 +99,8 @@ while true; do
     check_service "wurenji-acq"
     check_service "wurenji-api"
     check_service "wurenji-infer"
+    check_service "wurenji-thermal"
+    check_service "wurenji-doa"
     check_service "wurenji-fsm"
     check_memory
     check_disk

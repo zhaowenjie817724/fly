@@ -1,0 +1,36 @@
+[Unit]
+Description=WuRenji Thermal Camera Inference Service
+After=network-online.target wurenji-acq.service
+Wants=wurenji-acq.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="PATH=__FLY_DIR__/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=__FLY_DIR__/.venv/bin/python apps/thermal/thermal_infer.py --config configs/pi_stereo.yaml --run latest
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-thermal
+
+# Memory budget (OpenCV frame processing)
+MemoryMax=256M
+MemoryHigh=200M
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+SupplementaryGroups=video
+
+# OOM priority
+OOMScoreAdjust=50
+WatchdogSec=60
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
