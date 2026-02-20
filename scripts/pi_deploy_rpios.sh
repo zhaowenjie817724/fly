@@ -285,7 +285,7 @@ fi
 log_info "[8/8] 安装系统服务..."
 
 if [ -f "$FLY_DIR/scripts/pi/install-fly-services.sh" ]; then
-    bash "$FLY_DIR/scripts/pi/install-fly-services.sh" "$TARGET_USER" "$TARGET_GROUP" "$FLY_DIR" "configs/pi_bookworm.yaml"
+    bash "$FLY_DIR/scripts/pi/install-fly-services.sh" "$TARGET_USER" "$TARGET_GROUP" "$FLY_DIR" "configs/pi_stereo.yaml"
 else
     log_warn "install-fly-services.sh 未找到，跳过服务安装"
 fi
@@ -301,7 +301,7 @@ cd "$SCRIPT_DIR"
 source .venv/bin/activate
 
 DURATION=${1:-600}
-CONFIG="configs/pi_bookworm.yaml"
+CONFIG="configs/pi_stereo.yaml"
 
 echo "=========================================="
 echo "  通感之眼2.0 启动中..."
@@ -312,31 +312,29 @@ echo "=========================================="
 pkill -f "run_acq.py" 2>/dev/null || true
 pkill -f "apps/service/server.py" 2>/dev/null || true
 pkill -f "fsm_runner.py" 2>/dev/null || true
+pkill -f "yolo_infer.py" 2>/dev/null || true
 sleep 1
 
-# 启动数据采集
-echo "[1/3] 数据采集..."
+# 启动数据采集（遥测+观测管线，camera 由 infer 进程独占）
+echo "[1/4] 数据采集..."
 python apps/acquisition/run_acq.py --config "$CONFIG" --duration "$DURATION" &
 ACQ_PID=$!
 sleep 3
 
-# 获取 run 目录
-RUN_DIR=$(ls -td runs/*/ 2>/dev/null | head -1)
-if [ -z "$RUN_DIR" ]; then
-    echo "错误: 未找到 run 目录"
-    kill $ACQ_PID 2>/dev/null
-    exit 1
-fi
-echo "  Run: $RUN_DIR"
+# 启动 YOLO 推理（独占摄像头）
+echo "[2/4] YOLO 视觉推理..."
+python apps/vision/yolo_infer.py --config configs/vision.yaml --camera 0 --run latest &
+INFER_PID=$!
+sleep 1
 
 # 启动后端服务
-echo "[2/3] 后端服务..."
+echo "[3/4] 后端服务..."
 python apps/service/server.py --config configs/service.yaml --run latest &
 SERVICE_PID=$!
 sleep 1
 
 # 启动 FSM (dry-run 模式，待飞控接入后去掉 --dry-run)
-echo "[3/3] FSM 状态机..."
+echo "[4/4] FSM 状态机..."
 python apps/control/fsm_runner.py --config configs/fsm.yaml --run latest --dry-run &
 FSM_PID=$!
 
@@ -352,7 +350,7 @@ echo "=========================================="
 cleanup() {
     echo ""
     echo "停止服务..."
-    kill $ACQ_PID $SERVICE_PID $FSM_PID 2>/dev/null || true
+    kill $ACQ_PID $INFER_PID $SERVICE_PID $FSM_PID 2>/dev/null || true
     wait 2>/dev/null
     echo "已停止"
 }

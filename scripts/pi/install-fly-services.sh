@@ -114,7 +114,7 @@ render_and_install() {
 }
 
 echo "安装 WuRenji 服务文件..."
-for svc in wurenji-acq wurenji-api wurenji-fsm wurenji-watchdog; do
+for svc in wurenji-acq wurenji-api wurenji-fsm wurenji-infer wurenji-watchdog; do
     render_and_install "$UNIT_SRC_DIR/$svc.service" "/etc/systemd/system/$svc.service"
 done
 
@@ -165,7 +165,7 @@ done
 sudo systemctl daemon-reload
 
 echo "启用服务..."
-ENABLE_LIST="wurenji-acq wurenji-api wurenji-fsm wurenji-watchdog"
+ENABLE_LIST="wurenji-acq wurenji-api wurenji-fsm wurenji-infer wurenji-watchdog"
 if [ -f /etc/systemd/system/mavlink-router.service ]; then
     ENABLE_LIST="mavlink-router $ENABLE_LIST"
 fi

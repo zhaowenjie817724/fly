@@ -1,0 +1,37 @@
+[Unit]
+Description=WuRenji YOLO Vision Inference Service
+After=network-online.target wurenji-acq.service
+Wants=wurenji-acq.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__FLY_DIR__
+Environment="PATH=__FLY_DIR__/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=__FLY_DIR__/.venv/bin/python apps/vision/yolo_infer.py --config configs/vision.yaml --camera 0 --run latest
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wurenji-infer
+
+# Memory budget (YOLOv8n model ~200MB + frame buffer)
+MemoryMax=768M
+MemoryHigh=600M
+CPUQuota=80%
+
+# Security hardening
+ProtectSystem=strict
+ReadWritePaths=__FLY_DIR__/runs __FLY_DIR__/logs
+NoNewPrivileges=true
+PrivateTmp=true
+SupplementaryGroups=video
+
+# OOM priority (infer can be killed before acq/api)
+OOMScoreAdjust=100
+WatchdogSec=120
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

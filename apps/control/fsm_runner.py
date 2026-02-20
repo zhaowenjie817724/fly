@@ -322,6 +322,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="FSM runner (Sprint 4)")
     parser.add_argument("--config", default="configs/fsm.yaml", help="Config file")
     parser.add_argument("--run", default="latest", help="Run id/path to replay")
+    parser.add_argument("--obs-file", default=None, help="Override observation file (relative to run observations/)")
     parser.add_argument("--dry-run", action="store_true", help="Do not send MAVLink commands")
     parser.add_argument("--speed", type=float, default=1.0, help="Replay speed (0=fast)")
     args = parser.parse_args()
@@ -346,9 +347,28 @@ def main() -> int:
         if not run_dir.exists():
             raise RuntimeError(f"Run not found: {run_dir}")
 
-    obs_path = run_dir / "observations" / "fused.jsonl"
-    if not obs_path.exists():
-        raise RuntimeError("Missing fused.jsonl. Run apps/fusion/fuse_replay.py first.")
+    obs_dir = run_dir / "observations"
+
+    # 按优先级查找观测文件：--obs-file > fused.jsonl > vision_yolo.jsonl > observations.jsonl
+    if args.obs_file:
+        obs_path = obs_dir / args.obs_file
+    else:
+        candidates = ["fused.jsonl", "vision_yolo.jsonl", "observations.jsonl"]
+        obs_path = None
+        for name in candidates:
+            candidate = obs_dir / name
+            if candidate.exists():
+                obs_path = candidate
+                break
+        if obs_path is None:
+            raise RuntimeError(
+                f"No observation file found in {obs_dir}. "
+                "Expected one of: fused.jsonl, vision_yolo.jsonl, observations.jsonl"
+            )
+
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger("fsm").info("Using observation file: %s", obs_path)
 
     telemetry_path = run_dir / "telemetry" / "telemetry.jsonl"
     events_path = run_dir / "events.jsonl"

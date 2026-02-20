@@ -98,6 +98,7 @@ log "看门狗启动 (间隔: ${CHECK_INTERVAL}s, fly_dir: ${FLY_DIR})"
 while true; do
     check_service "wurenji-acq"
     check_service "wurenji-api"
+    check_service "wurenji-infer"
     check_service "wurenji-fsm"
     check_memory
     check_disk

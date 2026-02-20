@@ -548,11 +548,15 @@ def main() -> int:
 
     runs_root = repo_root / "runs"
     if args.run == "latest":
-        run_dirs = [p for p in runs_root.iterdir() if p.is_dir()] if runs_root.exists() else []
-        if not run_dirs:
-            raise RuntimeError("No runs found for --run latest")
-        run_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-        run_dir = run_dirs[0]
+        run_dir = None
+        while run_dir is None:
+            run_dirs = [p for p in runs_root.iterdir() if p.is_dir()] if runs_root.exists() else []
+            if run_dirs:
+                run_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                run_dir = run_dirs[0]
+            else:
+                print("Waiting for a run to appear in runs/ ...", flush=True)
+                time.sleep(2)
     else:
         run_dir = Path(args.run)
         if not run_dir.is_absolute():

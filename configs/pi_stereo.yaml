@@ -1,0 +1,44 @@
+run:
+  output_root: runs
+  duration_sec: 1800
+  stats_interval_sec: 10
+
+logging:
+  level: INFO
+  jsonl: true
+  dir: logs
+
+camera:
+  # yolo_infer.py 独占 /dev/video0 做实时推理，run_acq.py 不开相机避免冲突
+  enabled: false
+  mode: device
+  device_index: 0
+  width: 2160           # Sunplus 并排双目实际宽度
+  height: 1080
+  fps: 3                # 该分辨率下 V4L2 最高 3fps
+  codec: mp4v
+  snapshot_interval_sec: 5
+  jpeg_quality: 75
+
+audio:
+  enabled: false
+  mode: disabled
+
+telemetry:
+  enabled: true
+  mode: mavlink_udp     # 接 mavlink-router UDP 14551
+  emit_hz: 2
+  link_degraded_after_sec: 2
+  link_lost_after_sec: 5
+  mavlink:
+    udp: "udp:0.0.0.0:14551"   # 监听本机所有接口
+    serial_port: "/dev/ttyAMA0"
+    baud: 115200
+
+observation:
+  enabled: true
+  # vision_live: 实时跟踪 yolo_infer.py 写入的 vision_yolo.jsonl
+  # mock: 全 mock，调试管线时用
+  mode: vision_live
+  vision_live_source: vision_yolo.jsonl   # yolo_infer.py 的输出文件名
+  vision_live_poll_sec: 0.1              # 轮询间隔（秒）

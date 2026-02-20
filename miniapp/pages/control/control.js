@@ -3,9 +3,12 @@ Page({
     connected: false,
     fsmState: 'UNKNOWN',
     currentMode: '',
-    roll: 0,
-    pitch: 0,
-    yaw: 0,
+    roll: '0.0',
+    pitch: '0.0',
+    yaw: '0.0',
+    bearing: '--',
+    obsConf: '--',
+    obsStatus: 'NO_SIGNAL',
     cmdLogs: [],
     httpBase: '',
     wsUrl: ''
@@ -20,43 +23,93 @@ Page({
   },
 
   onUnload() {
-    wx.closeSocket();
+    if (this._socket) {
+      this._socket.close({});
+      this._socket = null;
+    }
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+    }
   },
 
   connectWs() {
-    const { wsUrl } = this.data;
-    wx.connectSocket({ url: wsUrl });
+    // 清理旧连接
+    if (this._socket) {
+      this._socket.close({});
+      this._socket = null;
+    }
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
 
-    wx.onSocketOpen(() => {
+    const { wsUrl } = this.data;
+    // 用 SocketTask API 避免全局监听器叠加
+    const socket = wx.connectSocket({ url: wsUrl });
+    this._socket = socket;
+
+    socket.onOpen(() => {
       this.setData({ connected: true });
     });
 
-    wx.onSocketClose(() => {
+    socket.onClose(() => {
       this.setData({ connected: false });
-      // 自动重连
-      setTimeout(() => this.connectWs(), 3000);
+      this._socket = null;
+      this._reconnectTimer = setTimeout(() => this.connectWs(), 3000);
     });
 
-    wx.onSocketMessage((msg) => {
+    socket.onError(() => {
+      this.setData({ connected: false });
+    });
+
+    socket.onMessage((msg) => {
       try {
         const data = JSON.parse(msg.data);
-        if (data.type === 'telemetry') {
-          const payload = data.payload || {};
-          const att = payload.attitude || {};
-          this.setData({
-            roll: (att.roll_deg || 0).toFixed(1),
-            pitch: (att.pitch_deg || 0).toFixed(1),
-            yaw: (att.yaw_deg || 0).toFixed(1)
-          });
-        }
-        if (data.type === 'status') {
-          const payload = data.payload || {};
-          this.setData({
-            connected: payload.link_status === 'OK'
-          });
-        }
+        this._handleWsMessage(data, socket);
       } catch (e) {}
     });
+  },
+
+  _handleWsMessage(data, socket) {
+    const type = data.type || '';
+
+    // 响应服务器心跳，防止服务器超时断连
+    if (type === 'ping') {
+      socket.send({ data: JSON.stringify({ type: 'pong', payload: data.payload }) });
+      return;
+    }
+
+    if (type === 'telemetry') {
+      const payload = data.payload || {};
+      const att = payload.attitude || {};
+      this.setData({
+        roll: (att.roll_deg || 0).toFixed(1),
+        pitch: (att.pitch_deg || 0).toFixed(1),
+        yaw: (att.yaw_deg || 0).toFixed(1)
+      });
+    }
+
+    if (type === 'status') {
+      const payload = data.payload || {};
+      // connected 状态由 onOpen/onClose 管理，这里只更新链路状态文字
+      const linkOk = payload.link_status === 'OK';
+      this.setData({ connected: linkOk });
+    }
+
+    // 视觉观测数据（observation:vision_yolo 或 observation:observations）
+    if (type.startsWith('observation:')) {
+      const payload = data.payload || {};
+      const status = payload.status || 'NO_SIGNAL';
+      if (status === 'OK' && payload.bearing_deg != null) {
+        this.setData({
+          bearing: payload.bearing_deg.toFixed(1),
+          obsConf: ((payload.confidence || 0) * 100).toFixed(0) + '%',
+          obsStatus: 'OK'
+        });
+      } else {
+        this.setData({ obsStatus: status });
+      }
+    }
   },
 
   loadFsmState() {
@@ -77,7 +130,9 @@ Page({
                      cmd === 'SET_MODE' ? '/api/control/mode' :
                      cmd === 'STOP' ? '/api/control/estop' : '/command';
 
-    const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date().toLocaleTimeString('zh-CN', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
 
     wx.request({
       url: `${httpBase}${endpoint}`,
@@ -85,12 +140,12 @@ Page({
       header: { 'content-type': 'application/json' },
       data: cmd === 'STOP' ? {} : params,
       success: (res) => {
-        const success = res.data && res.data.accepted;
+        const success = !!(res.data && res.data.accepted);
         this.addLog(time, `${cmd} ${JSON.stringify(params)}`, success);
         if (success) {
           wx.showToast({ title: '指令已发送', icon: 'success' });
         } else {
-          wx.showToast({ title: res.data.error || '发送失败', icon: 'none' });
+          wx.showToast({ title: (res.data && res.data.error) || '发送失败', icon: 'none' });
         }
       },
       fail: () => {
@@ -121,7 +176,6 @@ Page({
     this.setData({ currentMode: mode });
   },
 
-  // 急停长按确认
   onEstopLongPress() {
     wx.vibrateShort({ type: 'heavy' });
     wx.showModal({
@@ -140,19 +194,13 @@ Page({
   executeEstop() {
     wx.vibrateShort({ type: 'heavy' });
     this.sendCommand('STOP');
-    // 同时切换到LOITER模式
     setTimeout(() => {
       this.sendCommand('SET_MODE', { mode: 'LOITER' });
       this.setData({ currentMode: 'LOITER', fsmState: 'EMERGENCY_STOP' });
     }, 200);
   },
 
-  // 向后兼容：点击急停（提示长按）
   emergencyStop() {
-    wx.showToast({
-      title: '请长按以确认急停',
-      icon: 'none',
-      duration: 1500
-    });
+    wx.showToast({ title: '请长按以确认急停', icon: 'none', duration: 1500 });
   }
 });

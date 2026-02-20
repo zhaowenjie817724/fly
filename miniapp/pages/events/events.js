@@ -19,6 +19,22 @@ Page({
 
   onShow() {
     this.refresh();
+    // 每10秒自动刷新一次
+    this._refreshTimer = setInterval(() => this.refresh(), 10000);
+  },
+
+  onHide() {
+    if (this._refreshTimer) {
+      clearInterval(this._refreshTimer);
+      this._refreshTimer = null;
+    }
+  },
+
+  onUnload() {
+    if (this._refreshTimer) {
+      clearInterval(this._refreshTimer);
+      this._refreshTimer = null;
+    }
   },
 
   loadEvents() {
@@ -33,12 +49,10 @@ Page({
         if (res.data && res.data.events) {
           let events = res.data.events;
 
-          // 过滤
           if (filter !== 'all') {
             events = events.filter(e => e.type === filter);
           }
 
-          // 格式化时间
           events = events.map(e => {
             const time = e.time || {};
             const date = new Date(time.epoch_ms || Date.now());
@@ -60,7 +74,7 @@ Page({
           });
         }
       },
-      fail: (err) => {
+      fail: () => {
         wx.showToast({ title: '加载失败', icon: 'none' });
       },
       complete: () => {
@@ -88,8 +102,6 @@ Page({
 
   goDetail(e) {
     const id = e.currentTarget.dataset.id;
-    wx.navigateTo({
-      url: `/pages/event-detail/event-detail?id=${id}`
-    });
+    wx.navigateTo({ url: `/pages/event-detail/event-detail?id=${id}` });
   }
 });

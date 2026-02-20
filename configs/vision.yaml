@@ -3,23 +3,29 @@ vision:
   conf_threshold: 0.35
   imgsz: 640
   device: cpu
-  frame_skip: 1
-  max_fps: 0
-  max_detections: 20
+  frame_skip: 2            # Pi CPU：每2帧推理1次
+  max_fps: 5               # Pi CPU：最多5fps推理
+  max_detections: 5
   class_filter: ["person"]
-  camera_fov_deg: 90
+
+  # 双目摄像头配置
+  # 类型A（并排单设备）：camera_stereo_mode: side_by_side，推理前自动裁剪左半帧
+  # 类型B（独立双设备）：camera_stereo_mode: independent，直接用左目
+  camera_stereo_mode: side_by_side  # side_by_side | independent
+  camera_fov_deg: 70        # 根据你的摄像头实际水平FOV修改（单目）
+
   emit_no_signal: true
   no_signal_interval_sec: 2
   event_min_interval_sec: 2
   metrics_interval_sec: 5
-  save_annotated: false
-  annotate_every_n: 0
+  save_annotated: true      # 保存标注帧用于验证
+  annotate_every_n: 30      # 每30帧保存一张标注图
 
   # Sprint 2: 误报过滤策略
   roi_filter:
     enabled: true
-    min_area_ratio: 0.005    # ROI面积/画面面积 最小比例 (太小排除)
-    max_area_ratio: 0.6      # ROI面积/画面面积 最大比例 (太大排除)
-    min_aspect_ratio: 0.2    # 宽高比最小值 (排除极细条)
-    max_aspect_ratio: 5.0    # 宽高比最大值 (排除极扁条)
-    edge_margin_px: 10       # 边缘排除像素 (贴边目标不稳定)
+    min_area_ratio: 0.005
+    max_area_ratio: 0.6
+    min_aspect_ratio: 0.2
+    max_aspect_ratio: 5.0
+    edge_margin_px: 10
